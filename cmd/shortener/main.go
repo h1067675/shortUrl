@@ -72,6 +72,7 @@ func checkHeader(hd http.Header, key string, val string) bool {
 func basePath(responce http.ResponseWriter, request *http.Request) {
 	url := request.URL.Path
 
+	fmt.Println(request.Method)
 	fmt.Println(url)
 	for k, v := range request.Header {
 		for _, vv := range v {
@@ -87,6 +88,7 @@ func basePath(responce http.ResponseWriter, request *http.Request) {
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println(url)
 		body := createUrl(string(url))
 		responce.Write([]byte(body))
 		return
