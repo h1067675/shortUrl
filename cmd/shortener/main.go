@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -70,6 +71,14 @@ func checkHeader(hd http.Header, key string, val string) bool {
 
 func basePath(responce http.ResponseWriter, request *http.Request) {
 	url := request.URL.Path
+
+	fmt.Println(url)
+	for k, v := range request.Header {
+		for _, vv := range v {
+			fmt.Printf("%s : %s \n", k, vv)
+		}
+	}
+
 	if request.Method == http.MethodPost && url == "/" && checkHeader(request.Header, "Content-Type", "text/plain") {
 		responce.Header().Add("Content-Type", "text/plain")
 		responce.WriteHeader(http.StatusCreated)
