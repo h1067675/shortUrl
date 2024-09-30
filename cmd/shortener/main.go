@@ -29,26 +29,26 @@ func randChar() int {
 	return res
 }
 
-func createUrl(url string) string {
-	sortUrl := []byte("http://localhost:8080/")
+func createURL(url string) string {
+	shortURL := []byte("http://localhost:8080/x")
 	val, ok := outUrls[url]
 	if ok {
 		return val
 	}
-	for i := 0; i < 8; i++ {
-		sortUrl = append(sortUrl, byte(randChar()))
+	for i := 0; i < 7; i++ {
+		shortURL = append(shortURL, byte(randChar()))
 	}
-	result := string(sortUrl)
+	result := string(shortURL)
 	_, ok = shortUrls[result]
 	if ok {
-		return createUrl(url)
+		return createURL(url)
 	}
 	outUrls[url] = result
 	shortUrls[result] = url
 	return result
 }
 
-func getUrl(url string) (bool, string) {
+func getURL(url string) (bool, string) {
 	val, ok := shortUrls[url]
 	if ok {
 		return true, val
@@ -69,7 +69,7 @@ func checkHeader(hd http.Header, key string, val string) bool {
 	return false
 }
 
-func basePath(responce http.ResponseWriter, request *http.Request) {
+func shorten(responce http.ResponseWriter, request *http.Request) {
 	url := request.URL.Path
 
 	fmt.Println(request.Method)
@@ -80,7 +80,7 @@ func basePath(responce http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	if request.Method == http.MethodPost && url == "/" && checkHeader(request.Header, "Content-Type", "text/plain") {
+	if request.Method == http.MethodPost && checkHeader(request.Header, "Content-Type", "text/plain") {
 		responce.Header().Add("Content-Type", "text/plain")
 		responce.WriteHeader(http.StatusCreated)
 		request.ParseForm()
@@ -89,19 +89,32 @@ func basePath(responce http.ResponseWriter, request *http.Request) {
 			panic(err)
 		}
 		fmt.Println(url)
-		body := createUrl(string(url))
+		body := createURL(string(url))
 		responce.Write([]byte(body))
 		return
-	} else if request.Method == http.MethodGet {
-		ok, outUrl := getUrl("http://localhost:8080" + url)
-		if ok {
-			responce.Header().Add("Location", outUrl)
-			responce.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
 	}
 	responce.WriteHeader(http.StatusBadRequest)
 	//responce.Write([]byte(form))
+}
+
+func expand(responce http.ResponseWriter, request *http.Request) {
+	url := request.URL.Path
+	if request.Method == http.MethodGet {
+		ok, outURL := getURL("http://localhost:8080" + url)
+		if ok {
+			responce.Header().Add("Location", outURL)
+			responce.WriteHeader(http.StatusTemporaryRedirect)
+			return
+		}
+		responce.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+func StatusHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	// намеренно добавлена ошибка в JSON
+	rw.Write([]byte(`{"status":"ok"}`))
 }
 
 var outUrls = make(map[string]string)
@@ -109,7 +122,9 @@ var shortUrls = make(map[string]string)
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", basePath)
+	mux.HandleFunc("POST /", shorten)
+	mux.HandleFunc("GET /", expand)
+	mux.HandleFunc("GET /status", StatusHandler)
 
 	err := http.ListenAndServe(":8080", mux)
 	if err != nil {
