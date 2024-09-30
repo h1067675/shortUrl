@@ -5,19 +5,8 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 )
-
-const form = `<html>
-    <head>
-    <title></title>
-    </head>
-    <body>
-        <form action="/" method="post" enctype="text/plain">
-            <label>Ссылка <input type="text" name="url"></label>
-            <button type="submit">yandex.ru</button>
-        </form>
-    </body>
-</html>`
 
 func randChar() int {
 	max := 122
@@ -60,7 +49,7 @@ func checkHeader(hd http.Header, key string, val string) bool {
 	for k, v := range hd {
 		if key == k {
 			for _, vv := range v {
-				if vv == val {
+				if strings.Contains(vv, "text/plain") {
 					return true
 				}
 			}
@@ -72,8 +61,10 @@ func checkHeader(hd http.Header, key string, val string) bool {
 func shorten(responce http.ResponseWriter, request *http.Request) {
 	url := request.URL.Path
 
-	fmt.Println(request.Method)
-	fmt.Println(url)
+	fmt.Println("func: shorten")
+	fmt.Println("Requesr method: ", request.Method)
+	fmt.Println("Requesr URL: ", url)
+
 	for k, v := range request.Header {
 		for _, vv := range v {
 			fmt.Printf("%s : %s \n", k, vv)
@@ -94,11 +85,15 @@ func shorten(responce http.ResponseWriter, request *http.Request) {
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
-	//responce.Write([]byte(form))
 }
 
 func expand(responce http.ResponseWriter, request *http.Request) {
 	url := request.URL.Path
+
+	fmt.Println("func: expand")
+	fmt.Println("Requesr method: ", request.Method)
+	fmt.Println("Requesr URL: ", url)
+
 	if request.Method == http.MethodGet {
 		ok, outURL := getURL("http://localhost:8080" + url)
 		if ok {
@@ -110,13 +105,6 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func StatusHandler(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusOK)
-	// намеренно добавлена ошибка в JSON
-	rw.Write([]byte(`{"status":"ok"}`))
-}
-
 var outUrls = make(map[string]string)
 var shortUrls = make(map[string]string)
 
@@ -124,7 +112,6 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /", shorten)
 	mux.HandleFunc("GET /", expand)
-	mux.HandleFunc("GET /status", StatusHandler)
 
 	err := http.ListenAndServe(":8080", mux)
 	if err != nil {
