@@ -19,12 +19,12 @@ func randChar() int {
 }
 
 func createURL(url string) string {
-	shortURL := []byte("http://localhost:8080/x")
+	shortURL := []byte("http://localhost:8080/")
 	val, ok := outUrls[url]
 	if ok {
 		return val
 	}
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 8; i++ {
 		shortURL = append(shortURL, byte(randChar()))
 	}
 	result := string(shortURL)
@@ -49,7 +49,7 @@ func checkHeader(hd http.Header, key string, val string) bool {
 	for k, v := range hd {
 		if key == k {
 			for _, vv := range v {
-				if strings.Contains(vv, "text/plain") {
+				if strings.Contains(vv, val) {
 					return true
 				}
 			}
@@ -59,29 +59,33 @@ func checkHeader(hd http.Header, key string, val string) bool {
 }
 
 func shorten(responce http.ResponseWriter, request *http.Request) {
-	url := request.URL.Path
-
+	// логгирование работы функции
 	fmt.Println("func: shorten")
 	fmt.Println("Requesr method: ", request.Method)
-	fmt.Println("Requesr URL: ", url)
-
+	fmt.Println("Requesr URL: ", request.URL.Path)
 	for k, v := range request.Header {
 		for _, vv := range v {
 			fmt.Printf("%s : %s \n", k, vv)
 		}
 	}
+	// логгирование окончено
 
-	if request.Method == http.MethodPost && checkHeader(request.Header, "Content-Type", "text/plain") {
+	// проверяем на content-type
+	if checkHeader(request.Header, "Content-Type", "text/plain") {
+		var body string
+		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
 		responce.WriteHeader(http.StatusCreated)
-		request.ParseForm()
+		// получаем тело запроса
 		url, err := io.ReadAll(request.Body)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(url)
-		body := createURL(string(url))
-		responce.Write([]byte(body))
+		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
+		if len(url) > 0 {
+			body = createURL(string(url))
+			responce.Write([]byte(body))
+		}
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
@@ -101,8 +105,8 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 			responce.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
-		responce.WriteHeader(http.StatusBadRequest)
 	}
+	responce.WriteHeader(http.StatusBadRequest)
 }
 
 var outUrls = make(map[string]string)
