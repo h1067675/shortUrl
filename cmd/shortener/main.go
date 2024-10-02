@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi"
 )
 
 func randChar() int {
@@ -112,13 +115,18 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 var outUrls = make(map[string]string)
 var shortUrls = make(map[string]string)
 
-func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /", shorten)
-	mux.HandleFunc("GET /", expand)
+func CarRouter() chi.Router {
+	r := chi.NewRouter()
+	// Делаем маршрутизацию
+	r.Route("/", func(r chi.Router) {
+		r.Post("/", shorten) // POST запрос отправляем на сокращение ссылки
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", expand) // GET запрос с id направляем на извлечение ссылки
+		})
+	})
+	return r
+}
 
-	err := http.ListenAndServe(":8080", mux)
-	if err != nil {
-		panic(err)
-	}
+func main() {
+	log.Fatal(http.ListenAndServe(":8080", CarRouter()))
 }
