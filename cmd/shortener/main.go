@@ -208,7 +208,6 @@ func parseFlags() {
 
 func main() {
 	parseFlags()
-	fmt.Print(addrShortener.String())
-	fmt.Print(addrExpand.String())
+
 	log.Fatal(http.ListenAndServe(addrShortener.String(), router()))
 }
