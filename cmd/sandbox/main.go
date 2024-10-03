@@ -1,9 +1,14 @@
 package main
 
 import (
+	"errors"
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -103,7 +108,59 @@ func modelHandle(rw http.ResponseWriter, r *http.Request) {
 	rw.Write([]byte(carFunc(carID)))
 }
 
+type NetAddress struct {
+	Host string
+	Port int
+}
+
+func (n *NetAddress) String() string {
+	return fmt.Sprint(n.Host)
+}
+
+func (n *NetAddress) Set(flagValue string) error {
+	var e error
+	v := strings.Split(flagValue, "://")
+	if len(v) != 2 {
+		e = errors.New("Incorrect net address.")
+		return e
+	}
+	a := strings.Split(v[1], ":")
+	if len(a) < 1 || len(a) > 2 {
+		e = errors.New("Incorrect net address.")
+		return e
+	}
+	n.Host = a[0]
+	n.Port, e = strconv.Atoi(a[1])
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+var version = "0.0.1"
+
+// допишите код реализации методов интерфейса
+// ...
+
 func main() {
+	addr := new(NetAddress)
+	// если интерфейс не реализован,
+	// здесь будет ошибка компиляции
+	_ = flag.Value(addr)
+	// проверка реализации
+	flag.Var(addr, "addr", "Net address host:port")
+
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Version: %s\nUsage of %s:\n", version, os.Args[0])
+		flag.PrintDefaults()
+
+	}
+	flag.Parse()
+	fmt.Println(addr.Host)
+	fmt.Println(addr.Port)
+
+	return
+
 	r := chi.NewRouter()
 
 	r.Route("/car", func(r chi.Router) {

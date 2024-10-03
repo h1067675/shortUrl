@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	"github.com/h1067675/shortUrl/cmd/config"
 )
 
 func randChar() int {
@@ -22,7 +24,7 @@ func randChar() int {
 }
 
 func createURL(url string) string {
-	shortURL := []byte("http://localhost:8080/")
+	shortURL := []byte("http://" + config.NetAddressServerShortener + "/")
 	val, ok := outUrls[url]
 	if ok {
 		return val
@@ -102,7 +104,7 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 	fmt.Println("Requesr URL: ", url)
 
 	if request.Method == http.MethodGet {
-		ok, outURL := getURL("http://localhost:8080" + url)
+		ok, outURL := getURL("http://" + config.NetAddressServerShortener + url)
 		if ok {
 			responce.Header().Add("Location", outURL)
 			responce.WriteHeader(http.StatusTemporaryRedirect)
@@ -115,7 +117,7 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 var outUrls = make(map[string]string)
 var shortUrls = make(map[string]string)
 
-func CarRouter() chi.Router {
+func router() chi.Router {
 	r := chi.NewRouter()
 	// Делаем маршрутизацию
 	r.Route("/", func(r chi.Router) {
@@ -127,6 +129,15 @@ func CarRouter() chi.Router {
 	return r
 }
 
+func parseFlags() {
+	addrShortener := new(config.NetAddressServerExpand)
+	addrExpand := new(config.NetAddressServerShortener)
+	flag.Var(addrShortener, "a", "Net address shortener service (host:port)")
+	flag.Var(addrExpand, "b", "Net address expand service (host:port)")
+	flag.Parse()
+}
+
 func main() {
-	log.Fatal(http.ListenAndServe(":8080", CarRouter()))
+	parseFlags()
+	log.Fatal(http.ListenAndServe(config.NetAddressServerExpand, router()))
 }
