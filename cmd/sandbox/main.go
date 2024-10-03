@@ -155,8 +155,6 @@ func main() {
 	fmt.Println(addr.Host)
 	fmt.Println(addr.Port)
 
-	return
-
 	/*r := chi.NewRouter()
 
 	r.Route("/car", func(r chi.Router) {
