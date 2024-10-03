@@ -1,11 +1,9 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -121,13 +119,11 @@ func (n *NetAddress) Set(flagValue string) error {
 	var e error
 	v := strings.Split(flagValue, "://")
 	if len(v) != 2 {
-		e = errors.New("Incorrect net address.")
-		return e
+		return fmt.Errorf("%s", "incorrect net address.")
 	}
 	a := strings.Split(v[1], ":")
 	if len(a) < 1 || len(a) > 2 {
-		e = errors.New("Incorrect net address.")
-		return e
+		return fmt.Errorf("%s", "incorrect net address.")
 	}
 	n.Host = a[0]
 	n.Port, e = strconv.Atoi(a[1])
@@ -161,7 +157,7 @@ func main() {
 
 	return
 
-	r := chi.NewRouter()
+	/*r := chi.NewRouter()
 
 	r.Route("/car", func(r chi.Router) {
 		r.Get("/{id}", carHandle) // POST /car
@@ -175,5 +171,5 @@ func main() {
 		})
 	})
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8080", r))*/
 }

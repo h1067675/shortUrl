@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -35,16 +34,14 @@ func checkNetAddress(s string) (host string, port int, e error) {
 	v := strings.Split(s, "://")
 	if len(v) > 1 {
 		if len(v) > 2 || len(v) < 1 {
-			e = errors.New("Incorrect net address.")
-			return "localhost", 8080, e
+			return "localhost", 8080, fmt.Errorf("%s", "incorrect net address.")
 		}
 		a = strings.Split(v[1], ":")
 	} else {
 		a = strings.Split(s, ":")
 	}
 	if len(a) < 1 || len(a) > 2 {
-		e = errors.New("Incorrect net address.")
-		return "localhost", 8080, e
+		return "localhost", 8080, fmt.Errorf("%s", "incorrect net address.")
 	}
 	host = a[0]
 	if a[1] != "" {
@@ -201,6 +198,9 @@ var addrShortener = new(NetAddressServerExpand)
 var addrExpand = new(NetAddressServerShortener)
 
 func parseFlags() {
+	addrShortener.Host, addrShortener.Port = "localhost", 8080
+	addrExpand.Host, addrExpand.Port = "localhost", 8080
+
 	flag.Var(addrShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(addrExpand, "b", "Net address expand service (host:port)")
 	flag.Parse()
