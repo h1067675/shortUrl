@@ -1,17 +1,86 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi"
-	"github.com/h1067675/shortUrl/cmd/configSUrl"
 )
+
+var Config struct {
+	NetAddressServerShortener
+	NetAddressServerExpand
+}
+
+type NetAddressServerShortener struct {
+	Host string
+	Port int
+}
+
+type NetAddressServerExpand struct {
+	Host string
+	Port int
+}
+
+// checkNetAddress - функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
+func checkNetAddress(s string) (host string, port int, e error) {
+	var a []string
+	v := strings.Split(s, "://")
+	if len(v) > 1 {
+		if len(v) > 2 || len(v) < 1 {
+			e = errors.New("Incorrect net address.")
+			return "localhost", 8080, e
+		}
+		a = strings.Split(v[1], ":")
+	} else {
+		a = strings.Split(s, ":")
+	}
+	if len(a) < 1 || len(a) > 2 {
+		e = errors.New("Incorrect net address.")
+		return "localhost", 8080, e
+	}
+	host = a[0]
+	if a[1] != "" {
+		port, e = strconv.Atoi(a[1])
+		if e != nil {
+			return "localhost", 8080, e
+		}
+	} else {
+		port = 80
+	}
+	return
+}
+
+func (n *NetAddressServerShortener) String() string {
+	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
+}
+
+func (n *NetAddressServerShortener) Set(flagValue string) (err error) {
+	n.Host, n.Port, err = checkNetAddress(flagValue)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *NetAddressServerExpand) String() string {
+	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
+}
+
+func (n *NetAddressServerExpand) Set(flagValue string) (err error) {
+	n.Host, n.Port, err = checkNetAddress(flagValue)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func randChar() int {
 	max := 122
@@ -24,7 +93,7 @@ func randChar() int {
 }
 
 func createURL(url string) string {
-	shortURL := []byte("http://" + configSUrl.NetAddressServerShortener + "/")
+	shortURL := []byte("http://" + addrShortener.String() + "/")
 	val, ok := outUrls[url]
 	if ok {
 		return val
@@ -104,7 +173,7 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 	fmt.Println("Requesr URL: ", url)
 
 	if request.Method == http.MethodGet {
-		ok, outURL := getURL("http://" + configSUrl.NetAddressServerShortener + url)
+		ok, outURL := getURL("http://" + addrShortener.String() + url)
 		if ok {
 			responce.Header().Add("Location", outURL)
 			responce.WriteHeader(http.StatusTemporaryRedirect)
@@ -113,9 +182,6 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 	}
 	responce.WriteHeader(http.StatusBadRequest)
 }
-
-var outUrls = make(map[string]string)
-var shortUrls = make(map[string]string)
 
 func router() chi.Router {
 	r := chi.NewRouter()
@@ -129,10 +195,12 @@ func router() chi.Router {
 	return r
 }
 
-func parseFlags() {
+var outUrls = make(map[string]string)
+var shortUrls = make(map[string]string)
+var addrShortener = new(NetAddressServerExpand)
+var addrExpand = new(NetAddressServerShortener)
 
-	addrShortener := new(configSUrl.NetAddressServerExpand)
-	addrExpand := new(configSUrl.NetAddressServerShortener)
+func parseFlags() {
 	flag.Var(addrShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(addrExpand, "b", "Net address expand service (host:port)")
 	flag.Parse()
@@ -140,5 +208,7 @@ func parseFlags() {
 
 func main() {
 	parseFlags()
-	log.Fatal(http.ListenAndServe(configSUrl.NetAddressServerExpand, router()))
+	fmt.Print(addrShortener.String())
+	fmt.Print(addrExpand.String())
+	log.Fatal(http.ListenAndServe(addrShortener.String(), router()))
 }
