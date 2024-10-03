@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	"./cmd/config"
 	"github.com/go-chi/chi"
-	"github.com/h1067675/shortUrl/cmd/config"
 )
 
 func randChar() int {
