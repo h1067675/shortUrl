@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"./cmd/config"
 	"github.com/go-chi/chi"
+	"github.com/h1067675/shortUrl/cmd/configSUrl"
 )
 
 func randChar() int {
@@ -24,7 +24,7 @@ func randChar() int {
 }
 
 func createURL(url string) string {
-	shortURL := []byte("http://" + config.NetAddressServerShortener + "/")
+	shortURL := []byte("http://" + configSUrl.NetAddressServerShortener + "/")
 	val, ok := outUrls[url]
 	if ok {
 		return val
@@ -104,7 +104,7 @@ func expand(responce http.ResponseWriter, request *http.Request) {
 	fmt.Println("Requesr URL: ", url)
 
 	if request.Method == http.MethodGet {
-		ok, outURL := getURL("http://" + config.NetAddressServerShortener + url)
+		ok, outURL := getURL("http://" + configSUrl.NetAddressServerShortener + url)
 		if ok {
 			responce.Header().Add("Location", outURL)
 			responce.WriteHeader(http.StatusTemporaryRedirect)
@@ -130,8 +130,9 @@ func router() chi.Router {
 }
 
 func parseFlags() {
-	addrShortener := new(config.NetAddressServerExpand)
-	addrExpand := new(config.NetAddressServerShortener)
+
+	addrShortener := new(configSUrl.NetAddressServerExpand)
+	addrExpand := new(configSUrl.NetAddressServerShortener)
 	flag.Var(addrShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(addrExpand, "b", "Net address expand service (host:port)")
 	flag.Parse()
@@ -139,5 +140,5 @@ func parseFlags() {
 
 func main() {
 	parseFlags()
-	log.Fatal(http.ListenAndServe(config.NetAddressServerExpand, router()))
+	log.Fatal(http.ListenAndServe(configSUrl.NetAddressServerExpand, router()))
 }
