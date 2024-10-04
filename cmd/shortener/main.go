@@ -10,20 +10,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi"
 )
 
-var Config struct {
-	NetAddressServerShortener
-	NetAddressServerExpand
-}
-
-type NetAddressServerShortener struct {
-	Host string
-	Port int
-}
-
-type NetAddressServerExpand struct {
+type NetAddressServer struct {
 	Host string
 	Port int
 }
@@ -55,23 +46,11 @@ func checkNetAddress(s string) (host string, port int, e error) {
 	return
 }
 
-func (n *NetAddressServerShortener) String() string {
+func (n *NetAddressServer) String() string {
 	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
 }
 
-func (n *NetAddressServerShortener) Set(flagValue string) (err error) {
-	n.Host, n.Port, err = checkNetAddress(flagValue)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (n *NetAddressServerExpand) String() string {
-	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
-}
-
-func (n *NetAddressServerExpand) Set(flagValue string) (err error) {
+func (n *NetAddressServer) Set(flagValue string) (err error) {
 	n.Host, n.Port, err = checkNetAddress(flagValue)
 	if err != nil {
 		return err
@@ -194,8 +173,8 @@ func router() chi.Router {
 
 var outUrls = make(map[string]string)
 var shortUrls = make(map[string]string)
-var addrShortener = new(NetAddressServerExpand)
-var addrExpand = new(NetAddressServerShortener)
+var addrShortener = new(NetAddressServer)
+var addrExpand = new(NetAddressServer)
 
 func parseFlags() {
 	addrShortener.Host, addrShortener.Port = "localhost", 8080
@@ -206,8 +185,32 @@ func parseFlags() {
 	flag.Parse()
 }
 
+type EnvConfig struct {
+	ServerAddress string `env:"SERVER_ADDRESS`
+	BaseUrl       string `env:"BASE_URL`
+}
+
+func envConfig() {
+	var envConf EnvConfig
+	err := env.Parse(&envConf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if envConf.ServerAddress != "" {
+		addrShortener.Host, addrShortener.Port, err = checkNetAddress(envConf.ServerAddress)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	if envConf.BaseUrl != "" {
+		addrExpand.Host, addrExpand.Port, err = checkNetAddress(envConf.BaseUrl)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
 func main() {
 	parseFlags()
-
+	envConfig()
 	log.Fatal(http.ListenAndServe(addrShortener.String(), router()))
 }

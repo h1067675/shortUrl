@@ -4,11 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -135,10 +137,28 @@ func (n *NetAddress) Set(flagValue string) error {
 
 var version = "0.0.1"
 
+type User struct {
+	Name string `env:"USERNAME"`
+}
+
 // допишите код реализации методов интерфейса
 // ...
 
 func main() {
+	var user User
+	err := env.Parse(&user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(user.Name)
+
+	u := os.Getenv("USERNAME")
+	fmt.Println(u)
+	envList := os.Environ()
+	// выводим первые пять элементов
+	for i := 0; i < 5 && i < len(envList); i++ {
+		fmt.Println(envList[i])
+	}
 	addr := new(NetAddress)
 	// если интерфейс не реализован,
 	// здесь будет ошибка компиляции
