@@ -186,8 +186,8 @@ func parseFlags() {
 }
 
 type EnvConfig struct {
-	ServerAddress string `env:"SERVER_ADDRESS`
-	BaseUrl       string `env:"BASE_URL`
+	ServerAddress string `env:"SERVER_ADDRESS"`
+	BaseUrl       string `env:"BASE_URL"`
 }
 
 func envConfig() {
