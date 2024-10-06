@@ -45,7 +45,7 @@ func createShortCodeFunc() string {
 	if ok {
 		return createShortCodeFunc()
 	}
-	return string(shortURL)
+	return result
 }
 
 // createShortURLFunc - получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
