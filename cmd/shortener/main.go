@@ -117,13 +117,16 @@ func shortenHandler(responce http.ResponseWriter, request *http.Request) {
 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func expandHandler(responce http.ResponseWriter, request *http.Request) {
-	outURL, err := getURLFunc("http://" + conf.NetAddressServerShortener.String() + request.URL.Path)
-	if err != nil {
-		log.Fatal(err)
-		responce.WriteHeader(http.StatusBadRequest)
+	if request.Method == http.MethodGet {
+		outURL, err := getURLFunc("http://" + conf.NetAddressServerShortener.String() + request.URL.Path)
+		if err != nil {
+			log.Fatal(err)
+			responce.WriteHeader(http.StatusBadRequest)
+		}
+		responce.Header().Add("Location", outURL)
+		responce.WriteHeader(http.StatusTemporaryRedirect)
 	}
-	responce.Header().Add("Location", outURL)
-	responce.WriteHeader(http.StatusTemporaryRedirect)
+	responce.WriteHeader(http.StatusBadRequest)
 }
 
 // routerFunc - создает роутер chi и делает маршрутизацию к хандлерам
