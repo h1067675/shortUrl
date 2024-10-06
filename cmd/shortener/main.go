@@ -11,7 +11,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi"
-	"github.com/h1067675/shortUrl/cmd/configSUrl"
+	"github.com/h1067675/shortUrl/cmd/configsurl"
 )
 
 func hasErrorFunc(s string) error {
@@ -144,9 +144,9 @@ func routerFunc() chi.Router {
 
 var outUrls = make(map[string]string)
 var shortUrls = make(map[string]string)
-var conf = configSUrl.Config{
-	NetAddressServerShortener: configSUrl.NetAddressServer{Host: "localhost", Port: 8080},
-	NetAddressServerExpand:    configSUrl.NetAddressServer{Host: "localhost", Port: 8080},
+var conf = configsurl.Config{
+	NetAddressServerShortener: configsurl.NetAddressServer{Host: "localhost", Port: 8080},
+	NetAddressServerExpand:    configsurl.NetAddressServer{Host: "localhost", Port: 8080},
 }
 
 type EnvConfig struct {
