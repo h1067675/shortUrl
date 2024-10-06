@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_shorten(t *testing.T) {
+func Test_shortenHandler(t *testing.T) {
 	type want struct {
 		code        int
 		response    string
@@ -67,7 +67,7 @@ func Test_shorten(t *testing.T) {
 			request.Header.Add("Content-Type", test.contentType)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			shorten(w, request)
+			shortenHandler(w, request)
 
 			res := w.Result()
 			// проверяем код ответа
@@ -146,7 +146,7 @@ func Test_expand(t *testing.T) {
 			request.Header.Add("Content-Type", test.contentType)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			shorten(w, request)
+			shortenHandler(w, request)
 			res := w.Result()
 			// получаем и проверяем тело запроса
 			defer res.Body.Close()
@@ -157,7 +157,7 @@ func Test_expand(t *testing.T) {
 			request2.Header.Add("Content-Type", test.contentType)
 			// создаём новый Recorder
 			w2 := httptest.NewRecorder()
-			expand(w2, request2)
+			expandHandler(w2, request2)
 
 			res2 := w2.Result()
 			// проверяем код ответа

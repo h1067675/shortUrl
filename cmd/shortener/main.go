@@ -1,101 +1,78 @@
 package main
 
 import (
+	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi"
+	"github.com/h1067675/shortUrl/cmd/configSUrl"
 )
 
-type NetAddressServer struct {
-	Host string
-	Port int
-}
-
-// checkNetAddress - функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
-func checkNetAddress(s string) (host string, port int, e error) {
-	var a []string
-	v := strings.Split(s, "://")
-	if len(v) > 1 {
-		if len(v) > 2 || len(v) < 1 {
-			return "localhost", 8080, fmt.Errorf("%s", "incorrect net address.")
-		}
-		a = strings.Split(v[1], ":")
+func hasErrorFunc(s string) error {
+	if s != "" {
+		return errors.New(s)
 	} else {
-		a = strings.Split(s, ":")
+		return errors.New("has some problem")
 	}
-	if len(a) < 1 || len(a) > 2 {
-		return "localhost", 8080, fmt.Errorf("%s", "incorrect net address.")
-	}
-	host = a[0]
-	if a[1] != "" {
-		port, e = strconv.Atoi(a[1])
-		if e != nil {
-			return "localhost", 8080, e
-		}
-	} else {
-		port = 80
-	}
-	return
 }
 
-func (n *NetAddressServer) String() string {
-	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
-}
-
-func (n *NetAddressServer) Set(flagValue string) (err error) {
-	n.Host, n.Port, err = checkNetAddress(flagValue)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func randChar() int {
+// randCharFunc - генерирует случайную букву латинского алфавита большую или маленькую или цифру
+func randCharFunc() int {
 	max := 122
 	min := 48
 	res := rand.Intn(max-min) + min
 	if res > 57 && res < 65 || res > 90 && res < 97 {
-		return randChar()
+		return randCharFunc()
 	}
 	return res
 }
 
-func createURL(url string) string {
-	shortURL := []byte("http://" + addrShortener.String() + "/")
+// createShortCodeFunc - генерирует новую короткую ссылку и проеряет на совпадение в "базе данных" если такая
+// строка уже есть то делает рекурсию на саму себя пока не найдет уникальную ссылку
+func createShortCodeFunc() string {
+	shortURL := []byte("http://" + conf.NetAddressServerShortener.String() + "/")
+	for i := 0; i < 8; i++ {
+		shortURL = append(shortURL, byte(randCharFunc()))
+	}
+	result := string(shortURL)
+	_, ok := shortUrls[result]
+	if ok {
+		return createShortCodeFunc()
+	}
+	return string(shortURL)
+}
+
+// createShortURLFunc - получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
+// если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку
+func createShortURLFunc(url string) string {
 	val, ok := outUrls[url]
 	if ok {
 		return val
 	}
-	for i := 0; i < 8; i++ {
-		shortURL = append(shortURL, byte(randChar()))
-	}
-	result := string(shortURL)
-	_, ok = shortUrls[result]
-	if ok {
-		return createURL(url)
-	}
+	result := createShortCodeFunc()
 	outUrls[url] = result
 	shortUrls[result] = url
 	return result
 }
 
-func getURL(url string) (bool, string) {
-	val, ok := shortUrls[url]
+// getURLFunc - получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
+// если нет, то возвращает ошибку
+func getURLFunc(url string) (s string, e error) {
+	s, ok := shortUrls[url]
 	if ok {
-		return true, val
+		return s, nil
 	}
-	return false, ""
+	return "", hasErrorFunc("incorrect net address")
 }
 
-func checkHeader(hd http.Header, key string, val string) bool {
+// checkHeaderFunc - проверяем заголовки полученные в hd на соответствие требуемому
+func checkHeaderFunc(hd http.Header, key string, val string) bool {
 	for k, v := range hd {
 		if key == k {
 			for _, vv := range v {
@@ -108,20 +85,15 @@ func checkHeader(hd http.Header, key string, val string) bool {
 	return false
 }
 
-func shorten(responce http.ResponseWriter, request *http.Request) {
-	// логгирование работы функции
-	fmt.Println("func: shorten")
-	fmt.Println("Requesr method: ", request.Method)
-	fmt.Println("Requesr URL: ", request.URL.Path)
-	for k, v := range request.Header {
-		for _, vv := range v {
-			fmt.Printf("%s : %s \n", k, vv)
-		}
-	}
-	// логгирование окончено
-
+// shortenHandler - хандлер сокращения URL, проверят Content-type, присваивает правильный Content-type ответу,
+// записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
+// и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
+//
+// Добавить:
+// 1. Валидацию на првильность указания ссылки которую нужно сократить
+func shortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
-	if checkHeader(request.Header, "Content-Type", "text/plain") {
+	if checkHeaderFunc(request.Header, "Content-Type", "text/plain") {
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
@@ -129,11 +101,13 @@ func shorten(responce http.ResponseWriter, request *http.Request) {
 		// получаем тело запроса
 		url, err := io.ReadAll(request.Body)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
+			responce.WriteHeader(http.StatusBadRequest)
+			return
 		}
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
-			body = createURL(string(url))
+			body = createShortURLFunc(string(url))
 			responce.Write([]byte(body))
 		}
 		return
@@ -141,31 +115,25 @@ func shorten(responce http.ResponseWriter, request *http.Request) {
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
-func expand(responce http.ResponseWriter, request *http.Request) {
-	url := request.URL.Path
-
-	fmt.Println("func: expand")
-	fmt.Println("Requesr method: ", request.Method)
-	fmt.Println("Requesr URL: ", url)
-
-	if request.Method == http.MethodGet {
-		ok, outURL := getURL("http://" + addrShortener.String() + url)
-		if ok {
-			responce.Header().Add("Location", outURL)
-			responce.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
+// expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
+func expandHandler(responce http.ResponseWriter, request *http.Request) {
+	outURL, err := getURLFunc("http://" + conf.NetAddressServerShortener.String() + request.URL.Path)
+	if err != nil {
+		log.Fatal(err)
+		responce.WriteHeader(http.StatusBadRequest)
 	}
-	responce.WriteHeader(http.StatusBadRequest)
+	responce.Header().Add("Location", outURL)
+	responce.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func router() chi.Router {
+// routerFunc - создает роутер chi и делает маршрутизацию к хандлерам
+func routerFunc() chi.Router {
 	r := chi.NewRouter()
 	// Делаем маршрутизацию
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", shorten) // POST запрос отправляем на сокращение ссылки
+		r.Post("/", shortenHandler) // POST запрос отправляем на сокращение ссылки
 		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", expand) // GET запрос с id направляем на извлечение ссылки
+			r.Get("/", expandHandler) // GET запрос с id направляем на извлечение ссылки
 		})
 	})
 	return r
@@ -173,16 +141,9 @@ func router() chi.Router {
 
 var outUrls = make(map[string]string)
 var shortUrls = make(map[string]string)
-var addrShortener = new(NetAddressServer)
-var addrExpand = new(NetAddressServer)
-
-func parseFlags() {
-	addrShortener.Host, addrShortener.Port = "localhost", 8080
-	addrExpand.Host, addrExpand.Port = "localhost", 8080
-
-	flag.Var(addrShortener, "a", "Net address shortener service (host:port)")
-	flag.Var(addrExpand, "b", "Net address expand service (host:port)")
-	flag.Parse()
+var conf = configSUrl.Config{
+	NetAddressServerShortener: configSUrl.NetAddressServer{Host: "localhost", Port: 8080},
+	NetAddressServerExpand:    configSUrl.NetAddressServer{Host: "localhost", Port: 8080},
 }
 
 type EnvConfig struct {
@@ -190,29 +151,30 @@ type EnvConfig struct {
 	BaseURL       string `env:"BASE_URL"`
 }
 
-func envConfig() {
+// parseFlagsFunc - разбираем строку атрибутов
+func parseFlagsFunc() {
+	flag.Var(&conf.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
+	flag.Var(&conf.NetAddressServerExpand, "b", "Net address expand service (host:port)")
+	flag.Parse()
+}
+
+// envConfigFunc - забираем переменные окружения и если они установлены то указывам в конфиг из значения
+func envConfigFunc() {
 	var envConf EnvConfig
 	err := env.Parse(&envConf)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if envConf.ServerAddress != "" {
-		addrShortener.Host, addrShortener.Port, err = checkNetAddress(envConf.ServerAddress)
-		if err != nil {
-			log.Fatal(err)
-		}
+		conf.NetAddressServerShortener.Set(envConf.ServerAddress)
 	}
 	if envConf.BaseURL != "" {
-		addrExpand.Host, addrExpand.Port, err = checkNetAddress(envConf.BaseURL)
-		if err != nil {
-			log.Fatal(err)
-		}
+		conf.NetAddressServerExpand.Set(envConf.BaseURL)
 	}
 }
 
 func main() {
-
-	parseFlags()
-	envConfig()
-	log.Fatal(http.ListenAndServe(addrShortener.String(), router()))
+	parseFlagsFunc()
+	envConfigFunc()
+	log.Fatal(http.ListenAndServe(conf.NetAddressServerShortener.String(), routerFunc()))
 }

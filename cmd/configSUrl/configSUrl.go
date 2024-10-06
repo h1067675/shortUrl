@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var Config struct {
+type Config struct {
 	NetAddressServerShortener NetAddressServer
 	NetAddressServerExpand    NetAddressServer
 }
@@ -18,27 +18,33 @@ type NetAddressServer struct {
 }
 
 // checkNetAddress - функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
-func checkNetAddress(s string) (host string, port int, e error) {
+func checkNetAddress(s string, h string, p int) (host string, port int, e error) {
+	host, port = h, p
 	v := strings.Split(s, "://")
-	if len(v) != 2 {
-		e = errors.New("Incorrect net address.")
-		return "localhost", 8080, e
+	if len(v) < 1 || len(v) > 2 {
+		e = errors.New("incorrect net address")
+		return
 	}
-	a := strings.Split(v[1], ":")
+	if len(v) == 2 {
+		s = v[1]
+	}
+	a := strings.Split(s, ":")
 	if len(a) < 1 || len(a) > 2 {
-		e = errors.New("Incorrect net address.")
-		return "localhost", 8080, e
+		e = errors.New("incorrect net address")
+		return
 	}
 	host = a[0]
 	if a[1] != "" {
 		port, e = strconv.Atoi(a[1])
 		if e != nil {
-			return "localhost", 8080, e
+			return
 		}
-	} else {
-		port = 80
 	}
 	return
+}
+
+func (c *Config) SetConfig() {
+
 }
 
 // возвращаем адрес вида host:port
@@ -46,9 +52,9 @@ func (n *NetAddressServer) String() string {
 	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
 }
 
-// устанавливаем значения в состояние аргументов
-func (n *NetAddressServer) Set(flagValue string) (err error) {
-	n.Host, n.Port, err = checkNetAddress(flagValue)
+// устанавливаем значения host и port в переменные
+func (n *NetAddressServer) Set(s string) (err error) {
+	n.Host, n.Port, err = checkNetAddress(s, n.Host, n.Port)
 	if err != nil {
 		return err
 	}
