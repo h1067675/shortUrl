@@ -186,8 +186,8 @@ func parseFlags() {
 }
 
 type EnvConfig struct {
-	ServerAddress string `env:"SERVER_ADDRESS`
-	BaseUrl       string `env:"BASE_URL`
+	ServerAddress string `env:"SERVER_ADDRESS"`
+	BaseURL       string `env:"BASE_URL"`
 }
 
 func envConfig() {
@@ -202,14 +202,16 @@ func envConfig() {
 			log.Fatal(err)
 		}
 	}
-	if envConf.BaseUrl != "" {
-		addrExpand.Host, addrExpand.Port, err = checkNetAddress(envConf.BaseUrl)
+	if envConf.BaseURL != "" {
+		addrExpand.Host, addrExpand.Port, err = checkNetAddress(envConf.BaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 }
+
 func main() {
+
 	parseFlags()
 	envConfig()
 	log.Fatal(http.ListenAndServe(addrShortener.String(), router()))
