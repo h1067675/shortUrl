@@ -46,7 +46,7 @@ func checkNetAddress(s string, h string, p int) (host string, port int, e error)
 	}
 	host = a[0]
 	ip := net.ParseIP(host)
-	if ip == nil {
+	if ip == nil && host != "localhost" {
 		e = errors.New("incorrect net address")
 		return
 	}
@@ -82,15 +82,15 @@ func (c *Config) ParseFlags() {
 }
 
 // EnvConfigSet - забираем переменные окружения и если они установлены то указывам в конфиг из значения
-func (e *Config) EnvConfigSet() {
-	err := env.Parse(&e.EnvConf)
+func (c *Config) EnvConfigSet() {
+	err := env.Parse(&c.EnvConf)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if e.EnvConf.ServerAddress != "" {
-		e.NetAddressServerShortener.Set(e.EnvConf.ServerAddress)
+	if c.EnvConf.ServerAddress != "" {
+		c.NetAddressServerShortener.Set(c.EnvConf.ServerAddress)
 	}
-	if e.EnvConf.BaseURL != "" {
-		e.NetAddressServerExpand.Set(e.EnvConf.BaseURL)
+	if c.EnvConf.BaseURL != "" {
+		c.NetAddressServerExpand.Set(c.EnvConf.BaseURL)
 	}
 }
