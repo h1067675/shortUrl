@@ -14,8 +14,8 @@ import (
 
 type Connect struct {
 	Router chi.Router
-	Base   storage.Storage
-	Conf   configsurl.Config
+	Base   *storage.Storage
+	Conf   *configsurl.Config
 }
 
 // shortenHandler - хандлер сокращения URL, проверят Content-type, присваивает правильный Content-type ответу,

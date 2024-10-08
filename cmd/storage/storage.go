@@ -5,6 +5,11 @@ import (
 	"math/rand"
 )
 
+type Storager interface {
+	CreateShortURL(url string, adr string) string
+	GetURL(url string) (l string, e error)
+}
+
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
@@ -23,7 +28,7 @@ func randChar() int {
 
 // CreateShortCode - генерирует новую короткую ссылку и проеряет на совпадение в "базе данных" если такая
 // строка уже есть то делает рекурсию на саму себя пока не найдет уникальную ссылку
-func (s *Storage) CreateShortCode(adr string) string {
+func (s *Storage) createShortCode(adr string) string {
 	shortURL := []byte("http://" + adr + "/")
 	for i := 0; i < 8; i++ {
 		shortURL = append(shortURL, byte(randChar()))
@@ -31,7 +36,7 @@ func (s *Storage) CreateShortCode(adr string) string {
 	result := string(shortURL)
 	_, ok := s.InnerLinks[result]
 	if ok {
-		return s.CreateShortCode(adr)
+		return s.createShortCode(adr)
 	}
 	return result
 }
@@ -43,7 +48,7 @@ func (s *Storage) CreateShortURL(url string, adr string) string {
 	if ok {
 		return val
 	}
-	result := s.CreateShortCode(adr)
+	result := s.createShortCode(adr)
 	s.OutterLinks[url] = result
 	s.InnerLinks[result] = url
 	return result
