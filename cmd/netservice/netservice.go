@@ -1,6 +1,7 @@
 package netservice
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -26,6 +27,8 @@ type Connect struct {
 // 1. Валидацию на првильность указания ссылки которую нужно сократить
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
+	fmt.Println(request)
+	fmt.Println(c)
 	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") {
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
@@ -50,6 +53,8 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
+	fmt.Println(request)
+	fmt.Println(c)
 	if request.Method == http.MethodGet {
 		outURL, err := c.Base.GetURL("http://" + c.Conf.NetAddressServerShortener.String() + request.URL.Path)
 		if err != nil {

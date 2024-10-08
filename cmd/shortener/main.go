@@ -41,6 +41,6 @@ func main() {
 	conf.ParseFlags()
 	fmt.Print(conf)
 	conf.EnvConfigSet()
-	fmt.Print(conf)
+	fmt.Println(conf)
 	log.Fatal(http.ListenAndServe(conf.NetAddressServerShortener.String(), conn.RouterFunc()))
 }
