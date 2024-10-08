@@ -27,6 +27,11 @@ type Connect struct {
 // 1. Валидацию на првильность указания ссылки которую нужно сократить
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
+	fmt.Printf("Метод: %s \n", request.Method)
+	fmt.Printf("Context-type: %s \n", request.Header.Get("Content-Type"))
+	fmt.Printf("Host: %s \n", request.Host)
+	fmt.Printf("Адрес: %s \n", request.URL.Path)
+	fmt.Printf("Адрес 2: %s \n", request.URL.Host)
 	fmt.Println(request)
 	fmt.Println(c)
 	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") {
@@ -53,6 +58,11 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
+	fmt.Printf("Метод: %s \n", request.Method)
+	fmt.Printf("Context-type: %s \n", request.Header.Get("Content-Type"))
+	fmt.Printf("Host: %s \n", request.Host)
+	fmt.Printf("Адрес: %s \n", request.URL.Path)
+	fmt.Printf("Адрес 2: %s \n", request.URL.Host)
 	fmt.Println(request)
 	fmt.Println(c)
 	if request.Method == http.MethodGet {
