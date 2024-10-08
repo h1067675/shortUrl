@@ -77,7 +77,7 @@ func Test_shortenHandler(t *testing.T) {
 			body, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
-			assert.Equal(t, base.OutterLinks[test.want.response], string(body))
+			assert.Equal(t, conn.Base.OutterLinks[test.want.response], string(body))
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}
