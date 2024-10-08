@@ -1,7 +1,6 @@
 package netservice
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -27,13 +26,6 @@ type Connect struct {
 // 1. Валидацию на првильность указания ссылки которую нужно сократить
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
-	fmt.Printf("Метод: %s \n", request.Method)
-	fmt.Printf("Context-type: %s \n", request.Header.Get("Content-Type"))
-	fmt.Printf("Host: %s \n", request.Host)
-	fmt.Printf("Адрес: %s \n", request.URL.Path)
-	fmt.Printf("Адрес 2: %s \n", request.URL.Host)
-	fmt.Println(request)
-	fmt.Println(c)
 	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") {
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
@@ -48,7 +40,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		}
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
-			body = c.Base.CreateShortURL(string(url), c.Conf.NetAddressServerShortener.String())
+			body = c.Base.CreateShortURL(string(url), c.Conf.NetAddressServerExpand.String())
 			responce.Write([]byte(body))
 		}
 		return
@@ -58,13 +50,6 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
-	fmt.Printf("Метод: %s \n", request.Method)
-	fmt.Printf("Context-type: %s \n", request.Header.Get("Content-Type"))
-	fmt.Printf("Host: %s \n", request.Host)
-	fmt.Printf("Адрес: %s \n", request.URL.Path)
-	fmt.Printf("Адрес 2: %s \n", request.URL.Host)
-	fmt.Println(request)
-	fmt.Println(c)
 	if request.Method == http.MethodGet {
 		outURL, err := c.Base.GetURL("http://" + c.Conf.NetAddressServerShortener.String() + request.URL.Path)
 		if err != nil {

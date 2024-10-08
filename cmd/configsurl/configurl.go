@@ -71,7 +71,6 @@ func (n *NetAddressServer) Set(s string) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Устанавливаем значение host expand: %s \n", s)
 	return nil
 }
 
@@ -89,11 +88,9 @@ func (c *Config) EnvConfigSet() {
 		log.Fatal(err)
 	}
 	if c.EnvConf.ServerAddress != "" {
-		fmt.Printf("Устанавливаем значение host server: %s \n", c.EnvConf.ServerAddress)
 		c.NetAddressServerShortener.Set(c.EnvConf.ServerAddress)
 	}
 	if c.EnvConf.BaseURL != "" {
-		fmt.Printf("Устанавливаем значение host expand: %s \n", c.EnvConf.BaseURL)
 		c.NetAddressServerExpand.Set(c.EnvConf.BaseURL)
 	}
 }
