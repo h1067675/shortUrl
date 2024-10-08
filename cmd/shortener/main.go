@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -38,6 +39,8 @@ var conn = netservice.Connect{
 
 func main() {
 	conf.ParseFlags()
+	fmt.Print(conf)
 	conf.EnvConfigSet()
+	fmt.Print(conf)
 	log.Fatal(http.ListenAndServe(conf.NetAddressServerShortener.String(), conn.RouterFunc()))
 }
