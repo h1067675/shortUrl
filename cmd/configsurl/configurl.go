@@ -71,6 +71,7 @@ func (n *NetAddressServer) Set(s string) (err error) {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Устанавливаем значение host expand: %s \n", s)
 	return nil
 }
 
