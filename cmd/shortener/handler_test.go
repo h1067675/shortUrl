@@ -67,7 +67,7 @@ func Test_shortenHandler(t *testing.T) {
 			request.Header.Add("Content-Type", test.contentType)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			shortenHandler(w, request)
+			conn.ShortenHandler(w, request)
 
 			res := w.Result()
 			// проверяем код ответа
@@ -77,7 +77,7 @@ func Test_shortenHandler(t *testing.T) {
 			body, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
-			assert.Equal(t, outUrls[test.want.response], string(body))
+			assert.Equal(t, base.OutterLinks[test.want.response], string(body))
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}
@@ -146,7 +146,7 @@ func Test_expand(t *testing.T) {
 			request.Header.Add("Content-Type", test.contentType)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			shortenHandler(w, request)
+			conn.ShortenHandler(w, request)
 			res := w.Result()
 			// получаем и проверяем тело запроса
 			defer res.Body.Close()
@@ -157,7 +157,7 @@ func Test_expand(t *testing.T) {
 			request2.Header.Add("Content-Type", test.contentType)
 			// создаём новый Recorder
 			w2 := httptest.NewRecorder()
-			expandHandler(w2, request2)
+			conn.ExpandHandler(w2, request2)
 
 			res2 := w2.Result()
 			// проверяем код ответа
