@@ -187,6 +187,7 @@ func Test_shortenHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)
 			resp := w.Result()
+			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
 			var want string
 			if test.want.shortCode != "" {
@@ -271,15 +272,16 @@ func Test_expand(t *testing.T) {
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)
 			resp := w.Result()
-			body, _ := io.ReadAll(resp.Body)
 			defer resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
 			h2 := http.HandlerFunc(r.ExpandHandler)
 			request2, err := http.NewRequest(test.methodExpand, string(body), nil)
 			require.NoError(t, err)
 			request2.Header.Add("Content-Type", test.contentType)
 			w2 := httptest.NewRecorder()
 			h2.ServeHTTP(w2, request2)
-
+			resp2 := w2.Result()
+			defer resp2.Body.Close()
 			// проверяем код ответа
 			assert.Equal(t, test.want.code, w2.Result().StatusCode)
 			// ппроверяем location
