@@ -194,8 +194,8 @@ func Test_shortenHandler(t *testing.T) {
 				want = "http://" + r.Config.GetConfig().OuterAddress + "/" + test.want.shortCode
 			}
 			assert.Equal(t, string(body), want)
-			assert.Equal(t, test.want.code, w.Result().StatusCode)
-			assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"))
+			assert.Equal(t, test.want.code, resp.StatusCode)
+			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 
 		})
 	}
@@ -283,9 +283,9 @@ func Test_expand(t *testing.T) {
 			resp2 := w2.Result()
 			defer resp2.Body.Close()
 			// проверяем код ответа
-			assert.Equal(t, test.want.code, w2.Result().StatusCode)
+			assert.Equal(t, test.want.code, resp2.StatusCode)
 			// ппроверяем location
-			assert.Equal(t, test.want.location, w2.Header().Get("Location"))
+			assert.Equal(t, test.want.location, resp2.Header.Get("Location"))
 		})
 	}
 }
