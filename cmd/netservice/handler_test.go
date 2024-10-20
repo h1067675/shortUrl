@@ -185,6 +185,7 @@ func Test_shortenHandler(t *testing.T) {
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)
+			defer w.Body.Reset()
 			body := w.Body.String()
 			var want string
 			if test.want.shortCode != "" {
@@ -269,7 +270,7 @@ func Test_expand(t *testing.T) {
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)
 			body := w.Body.String()
-
+			defer w.Body.Reset()
 			h2 := http.HandlerFunc(r.ExpandHandler)
 			request2, err := http.NewRequest(test.methodExpand, body, nil)
 			require.NoError(t, err)
