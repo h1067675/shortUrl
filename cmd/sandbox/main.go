@@ -1,17 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/caarlos0/env/v6"
-	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi"
+	log "github.com/sirupsen/logrus"
 )
 
 type CarsList map[string]string
@@ -145,35 +143,74 @@ type User struct {
 // ...
 
 func main() {
-	var user User
-	err := env.Parse(&user)
+	// создаём файл info.log и обрабатываем ошибку
+	file, err := os.OpenFile("info.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(user.Name)
 
-	u := os.Getenv("USERNAME")
-	fmt.Println(u)
-	envList := os.Environ()
-	// выводим первые пять элементов
-	for i := 0; i < 5 && i < len(envList); i++ {
-		fmt.Println(envList[i])
-	}
-	addr := new(NetAddress)
-	// если интерфейс не реализован,
-	// здесь будет ошибка компиляции
-	_ = flag.Value(addr)
-	// проверка реализации
-	flag.Var(addr, "addr", "Net address host:port")
+	// откладываем закрытие файла
+	defer file.Close()
 
-	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Version: %s\nUsage of %s:\n", version, os.Args[0])
-		flag.PrintDefaults()
+	// устанавливаем вывод логов в файл
+	log.SetOutput(file)
+	// устанавливаем вывод логов в формате JSON
+	log.SetFormatter(&log.JSONFormatter{})
+	// устанавливаем уровень предупреждений
+	log.SetLevel(log.WarnLevel)
 
-	}
-	flag.Parse()
-	fmt.Println(addr.Host)
-	fmt.Println(addr.Port)
+	// определяем стандартные поля JSON
+	log.WithFields(log.Fields{
+		"genre": "metal",
+		"name":  "Rammstein",
+	}).Info("Немецкая метал-группа, образованная в январе 1994 года в Берлине.")
+
+	log.WithFields(log.Fields{
+		"omg":  true,
+		"name": "Garbage",
+	}).Warn("В 2021 году вышел новый альбом No Gods No Masters.")
+
+	log.WithFields(log.Fields{
+		"omg":  true,
+		"name": "Linkin Park",
+	}).Fatal("Группа Linkin Park взяла паузу после смерти вокалиста Честера Беннингтона 20 июля 2017 года.")
+
+	// var buf bytes.Buffer
+	// var nr = io.Writer(&buf)
+	// var mylog = log.New(nr, "mylog: ", 0)
+	// mylog.Print("Hello, world!")
+	// mylog.Print("Goodbye")
+
+	// fmt.Print(&buf)
+	// var user User
+	// err := env.Parse(&user)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// log.Println(user.Name)
+
+	// u := os.Getenv("USERNAME")
+	// fmt.Println(u)
+	// envList := os.Environ()
+	// // выводим первые пять элементов
+	// for i := 0; i < 5 && i < len(envList); i++ {
+	// 	fmt.Println(envList[i])
+	// }
+	// addr := new(NetAddress)
+	// // если интерфейс не реализован,
+	// // здесь будет ошибка компиляции
+	// _ = flag.Value(addr)
+	// // проверка реализации
+	// flag.Var(addr, "addr", "Net address host:port")
+
+	// flag.Usage = func() {
+	// 	fmt.Fprintf(flag.CommandLine.Output(), "Version: %s\nUsage of %s:\n", version, os.Args[0])
+	// 	flag.PrintDefaults()
+
+	// }
+	// flag.Parse()
+	// fmt.Println(addr.Host)
+	// fmt.Println(addr.Port)
 
 	/*r := chi.NewRouter()
 

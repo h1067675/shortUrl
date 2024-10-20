@@ -7,15 +7,35 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
-
-	"github.com/h1067675/shortUrl/cmd/configsurl"
-	"github.com/h1067675/shortUrl/cmd/storage"
+	"github.com/h1067675/shortUrl/internal/logger"
+	"go.uber.org/zap"
 )
 
+type MemStorager interface {
+	CreateShortURL(url string, adr string) string
+	GetURL(url string) (l string, e error)
+}
+
+type Configurer interface {
+	GetConfig() struct {
+		ServerAddress string
+		OuterAddress  string
+	}
+}
+
 type Connect struct {
-	Router chi.Router
-	Base   *storage.Storage
-	Conf   *configsurl.Config
+	Router  chi.Router
+	Storage MemStorager
+	Config  Configurer
+}
+
+func NewConnect(i MemStorager, c Configurer) *Connect {
+	var r = Connect{
+		Router:  chi.NewRouter(),
+		Storage: i,
+		Config:  c,
+	}
+	return &r
 }
 
 // shortenHandler - хандлер сокращения URL, проверят Content-type, присваивает правильный Content-type ответу,
@@ -40,7 +60,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		}
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
-			body = c.Base.CreateShortURL(string(url), c.Conf.NetAddressServerExpand.String())
+			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
 			responce.Write([]byte(body))
 		}
 		return
@@ -51,7 +71,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
-		outURL, err := c.Base.GetURL("http://" + c.Conf.NetAddressServerShortener.String() + request.URL.Path)
+		outURL, err := c.Storage.GetURL("http://" + c.Config.GetConfig().ServerAddress + request.URL.Path)
 		if err != nil {
 			log.Fatal(err)
 			responce.WriteHeader(http.StatusBadRequest)
@@ -72,5 +92,12 @@ func (c *Connect) RouterFunc() chi.Router {
 			r.Get("/", c.ExpandHandler) // GET запрос с id направляем на извлечение ссылки
 		})
 	})
+	logger.Log.Debug("Server is running", zap.String("server address", c.Config.GetConfig().ServerAddress))
 	return c.Router
+}
+
+func (c *Connect) StartServer() {
+	if err := http.ListenAndServe(c.Config.GetConfig().ServerAddress, logger.RequestLogger(c.RouterFunc())); err != nil {
+		logger.Log.Fatal(err.Error(), zap.String("server address", c.Config.GetConfig().ServerAddress))
+	}
 }

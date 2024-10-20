@@ -24,8 +24,29 @@ type NetAddressServer struct {
 }
 
 type EnvConfig struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
+	ServerShortener string `env:"SERVER_ADDRESS"`
+	ServerExpand    string `env:"BASE_URL"`
+}
+
+// NewConfig - функция создания конфига, получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
+// адреса по умолчанию: localhost:8080
+func NewConfig(netAddressServerShortener string, netAddressServerExpand string) *Config {
+	var r = Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
+		NetAddressServerShortener: NetAddressServer{
+			// переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
+			Host: "localhost",
+			Port: 8080,
+		},
+		NetAddressServerExpand: NetAddressServer{
+			// переменная которая будет хранить сетевой адрес подставляемый к сокращенным ссылкам (аргумент -b командной строки)
+			Host: "localhost",
+			Port: 8080,
+		},
+		EnvConf: EnvConfig{},
+	}
+	r.NetAddressServerShortener.Set(netAddressServerShortener)
+	r.NetAddressServerExpand.Set(netAddressServerExpand)
+	return &r
 }
 
 // checkNetAddress - функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
@@ -87,10 +108,27 @@ func (c *Config) EnvConfigSet() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if c.EnvConf.ServerAddress != "" {
-		c.NetAddressServerShortener.Set(c.EnvConf.ServerAddress)
+	if c.EnvConf.ServerShortener != "" {
+		c.NetAddressServerShortener.Set(c.EnvConf.ServerShortener)
 	}
-	if c.EnvConf.BaseURL != "" {
-		c.NetAddressServerExpand.Set(c.EnvConf.BaseURL)
+	if c.EnvConf.ServerExpand != "" {
+		c.NetAddressServerExpand.Set(c.EnvConf.ServerExpand)
 	}
+}
+
+// Set - инициирует процесс установки настроек
+func (c *Config) Set() {
+	c.ParseFlags()
+	c.EnvConfigSet()
+}
+
+// GetConfig - передает структцру со строками адреса сервера сокращения и адреса сервера переадресации коротких адресов
+func (c *Config) GetConfig() struct {
+	ServerAddress string
+	OuterAddress  string
+} {
+	return struct {
+		ServerAddress string
+		OuterAddress  string
+	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String()}
 }
