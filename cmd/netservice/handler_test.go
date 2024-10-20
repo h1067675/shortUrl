@@ -3,6 +3,7 @@ package netservice
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -185,13 +186,13 @@ func Test_shortenHandler(t *testing.T) {
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)
-			defer w.Body.Reset()
-			body := w.Body.String()
+			resp := w.Result()
+			body, _ := io.ReadAll(resp.Body)
 			var want string
 			if test.want.shortCode != "" {
 				want = "http://" + r.Config.GetConfig().OuterAddress + "/" + test.want.shortCode
 			}
-			assert.Equal(t, body, want)
+			assert.Equal(t, string(body), want)
 			assert.Equal(t, test.want.code, w.Result().StatusCode)
 			assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"))
 
@@ -269,10 +270,11 @@ func Test_expand(t *testing.T) {
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)
-			body := w.Body.String()
-			defer w.Body.Reset()
+			resp := w.Result()
+			body, _ := io.ReadAll(resp.Body)
+			defer resp.Body.Close()
 			h2 := http.HandlerFunc(r.ExpandHandler)
-			request2, err := http.NewRequest(test.methodExpand, body, nil)
+			request2, err := http.NewRequest(test.methodExpand, string(body), nil)
 			require.NoError(t, err)
 			request2.Header.Add("Content-Type", test.contentType)
 			w2 := httptest.NewRecorder()
