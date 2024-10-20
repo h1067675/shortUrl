@@ -1,216 +1,46 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"io"
 	"log"
-	"math/rand"
 	"net/http"
-	"strconv"
-	"strings"
 
-	"github.com/caarlos0/env/v6"
-	"github.com/go-chi/chi"
+	"github.com/h1067675/shortUrl/cmd/configsurl"
+	"github.com/h1067675/shortUrl/cmd/netservice"
+	"github.com/h1067675/shortUrl/cmd/storage"
 )
 
-type NetAddressServer struct {
-	Host string
-	Port int
+// Создаем хранилище данных
+var base = storage.Storage{
+	InnerLinks:  make(map[string]string),
+	OutterLinks: make(map[string]string),
 }
 
-// checkNetAddress - функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
-func checkNetAddress(s string) (host string, port int, e error) {
-	var a []string
-	v := strings.Split(s, "://")
-	if len(v) > 1 {
-		if len(v) > 2 || len(v) < 1 {
-			return "localhost", 8080, fmt.Errorf("%s", "incorrect net address.")
-		}
-		a = strings.Split(v[1], ":")
-	} else {
-		a = strings.Split(s, ":")
-	}
-	if len(a) < 1 || len(a) > 2 {
-		return "localhost", 8080, fmt.Errorf("%s", "incorrect net address.")
-	}
-	host = a[0]
-	if a[1] != "" {
-		port, e = strconv.Atoi(a[1])
-		if e != nil {
-			return "localhost", 8080, e
-		}
-	} else {
-		port = 80
-	}
-	return
+// Устанавливаем настройки приложения по умолчанию
+var conf = configsurl.Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
+	NetAddressServerShortener: configsurl.NetAddressServer{
+		// переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
+		Host: "localhost",
+		Port: 8080,
+	},
+	NetAddressServerExpand: configsurl.NetAddressServer{
+		// переменная которая будет хранить сетевой адрес подставляемый к сокращенным ссылкам (аргумент -b командной строки)
+		Host: "localhost",
+		Port: 8080,
+	},
+	EnvConf: configsurl.EnvConfig{},
 }
 
-func (n *NetAddressServer) String() string {
-	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
+// Создаем соединение и помещвем в него переменные хранения и конфигурации
+var conn = netservice.Connect{
+	Base: &base,
+	Conf: &conf,
 }
 
-func (n *NetAddressServer) Set(flagValue string) (err error) {
-	n.Host, n.Port, err = checkNetAddress(flagValue)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func randChar() int {
-	max := 122
-	min := 48
-	res := rand.Intn(max-min) + min
-	if res > 57 && res < 65 || res > 90 && res < 97 {
-		return randChar()
-	}
-	return res
-}
-
-func createURL(url string) string {
-	shortURL := []byte("http://" + addrShortener.String() + "/")
-	val, ok := outUrls[url]
-	if ok {
-		return val
-	}
-	for i := 0; i < 8; i++ {
-		shortURL = append(shortURL, byte(randChar()))
-	}
-	result := string(shortURL)
-	_, ok = shortUrls[result]
-	if ok {
-		return createURL(url)
-	}
-	outUrls[url] = result
-	shortUrls[result] = url
-	return result
-}
-
-func getURL(url string) (bool, string) {
-	val, ok := shortUrls[url]
-	if ok {
-		return true, val
-	}
-	return false, ""
-}
-
-func checkHeader(hd http.Header, key string, val string) bool {
-	for k, v := range hd {
-		if key == k {
-			for _, vv := range v {
-				if strings.Contains(vv, val) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func shorten(responce http.ResponseWriter, request *http.Request) {
-	// логгирование работы функции
-	fmt.Println("func: shorten")
-	fmt.Println("Requesr method: ", request.Method)
-	fmt.Println("Requesr URL: ", request.URL.Path)
-	for k, v := range request.Header {
-		for _, vv := range v {
-			fmt.Printf("%s : %s \n", k, vv)
-		}
-	}
-	// логгирование окончено
-
-	// проверяем на content-type
-	if checkHeader(request.Header, "Content-Type", "text/plain") {
-		var body string
-		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
-		responce.Header().Add("Content-Type", "text/plain")
-		responce.WriteHeader(http.StatusCreated)
-		// получаем тело запроса
-		url, err := io.ReadAll(request.Body)
-		if err != nil {
-			panic(err)
-		}
-		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
-		if len(url) > 0 {
-			body = createURL(string(url))
-			responce.Write([]byte(body))
-		}
-		return
-	}
-	responce.WriteHeader(http.StatusBadRequest)
-}
-
-func expand(responce http.ResponseWriter, request *http.Request) {
-	url := request.URL.Path
-
-	fmt.Println("func: expand")
-	fmt.Println("Requesr method: ", request.Method)
-	fmt.Println("Requesr URL: ", url)
-
-	if request.Method == http.MethodGet {
-		ok, outURL := getURL("http://" + addrShortener.String() + url)
-		if ok {
-			responce.Header().Add("Location", outURL)
-			responce.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
-	}
-	responce.WriteHeader(http.StatusBadRequest)
-}
-
-func router() chi.Router {
-	r := chi.NewRouter()
-	// Делаем маршрутизацию
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", shorten) // POST запрос отправляем на сокращение ссылки
-		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", expand) // GET запрос с id направляем на извлечение ссылки
-		})
-	})
-	return r
-}
-
-var outUrls = make(map[string]string)
-var shortUrls = make(map[string]string)
-var addrShortener = new(NetAddressServer)
-var addrExpand = new(NetAddressServer)
-
-func parseFlags() {
-	addrShortener.Host, addrShortener.Port = "localhost", 8080
-	addrExpand.Host, addrExpand.Port = "localhost", 8080
-
-	flag.Var(addrShortener, "a", "Net address shortener service (host:port)")
-	flag.Var(addrExpand, "b", "Net address expand service (host:port)")
-	flag.Parse()
-}
-
-type EnvConfig struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
-}
-
-func envConfig() {
-	var envConf EnvConfig
-	err := env.Parse(&envConf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if envConf.ServerAddress != "" {
-		addrShortener.Host, addrShortener.Port, err = checkNetAddress(envConf.ServerAddress)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	if envConf.BaseURL != "" {
-		addrExpand.Host, addrExpand.Port, err = checkNetAddress(envConf.BaseURL)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}
 func main() {
-	parseFlags()
-	envConfig()
-	log.Fatal(http.ListenAndServe(addrShortener.String(), router()))
+	conf.ParseFlags()
+	fmt.Print(conf)
+	conf.EnvConfigSet()
+	fmt.Println(conf)
+	log.Fatal(http.ListenAndServe(conf.NetAddressServerShortener.String(), conn.RouterFunc()))
 }
