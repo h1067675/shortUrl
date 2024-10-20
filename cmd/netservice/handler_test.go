@@ -1,0 +1,287 @@
+package netservice
+
+import (
+	"bytes"
+	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/h1067675/shortUrl/internal/logger"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type want struct {
+	code        int
+	response    string
+	contentType string
+	shortCode   string
+	location    string
+}
+type test struct {
+	name         string
+	method       string
+	methodAdd    string
+	methodExpand string
+	contentType  string
+	body         string
+	shortCode    string
+	want         want
+}
+type TestStorage struct {
+	InnerLinks  map[string]string
+	OutterLinks map[string]string
+	Test        test
+}
+
+func (s *TestStorage) CreateShortURL(url string, adr string) string {
+	val, ok := s.OutterLinks[url]
+	if ok {
+		return val
+	}
+	result := "http://" + adr + "/" + s.Test.shortCode
+	s.OutterLinks[url] = result
+	s.InnerLinks[result] = url
+	return result
+}
+func (s *TestStorage) GetURL(url string) (l string, e error) {
+	l, ok := s.InnerLinks[url]
+	if ok {
+		return l, nil
+	}
+	return "", errors.New("link not found")
+}
+func (s *TestStorage) TakeTestData(test test) {
+	s.Test = test
+}
+
+type NetAddressServer struct {
+	Host string
+	Port int
+}
+type Cnfg struct {
+	NetAddressServerShortener NetAddressServer
+	NetAddressServerExpand    NetAddressServer
+}
+
+func (c *Cnfg) GetConfig() struct {
+	ServerAddress string
+	OuterAddress  string
+} {
+	return struct {
+		ServerAddress string
+		OuterAddress  string
+	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String()}
+}
+func (n *NetAddressServer) String() string {
+	return n.Host + ":" + strconv.Itoa(n.Port)
+}
+func (n *NetAddressServer) Set(s string) (err error) {
+	n.Host, n.Port, err = checkNetAddress(s, n.Host, n.Port)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkNetAddress(s string, h string, p int) (host string, port int, e error) {
+	host, port = h, p
+	v := strings.Split(s, "://")
+	if len(v) < 1 || len(v) > 2 {
+		e = errors.New("incorrect net address")
+		return
+	}
+	if len(v) == 2 {
+		s = v[1]
+	}
+	a := strings.Split(s, ":")
+	if len(a) < 1 || len(a) > 2 {
+		e = errors.New("incorrect net address")
+		return
+	}
+	host = a[0]
+	ip := net.ParseIP(host)
+	if ip == nil && host != "localhost" {
+		e = errors.New("incorrect net address")
+		return
+	}
+	if a[1] != "" {
+		port, e = strconv.Atoi(a[1])
+		if e != nil || port < 0 || port > 65535 {
+			e = errors.New("incorrect net address")
+			return
+		}
+	}
+	return
+}
+
+func Test_shortenHandler(t *testing.T) {
+	tests := []test{{
+		name:        "test shorten #1",
+		method:      http.MethodPost,
+		contentType: "text/plain",
+		shortCode:   "",
+		body:        "",
+		want: want{
+			code:        201,
+			response:    "",
+			contentType: "text/plain",
+			shortCode:   "",
+		},
+	},
+		{
+			name:        "test shorten #2",
+			method:      http.MethodPost,
+			contentType: "text/plain; charset=utf-8",
+			shortCode:   "12345678",
+			body:        "http://ya.ru/",
+			want: want{
+				code:        201,
+				response:    "http://ya.ru/",
+				contentType: "text/plain",
+				shortCode:   "12345678",
+			},
+		},
+		{
+			name:        "test shorten #3",
+			method:      http.MethodPost,
+			contentType: "text/json",
+			shortCode:   "",
+			body:        "http://ya.ru/",
+			want: want{
+				code:        400,
+				response:    "",
+				contentType: "",
+				shortCode:   "",
+			},
+		},
+	}
+
+	logger.Initialize("debug")
+	var strg = TestStorage{
+		InnerLinks:  map[string]string{},
+		OutterLinks: map[string]string{},
+	}
+	var cnf = Cnfg{
+		NetAddressServerShortener: NetAddressServer{Host: "localhoxt", Port: 8080},
+		NetAddressServerExpand:    NetAddressServer{Host: "localhoxt", Port: 8080},
+	}
+	var r = NewConnect(&strg, &cnf)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			strg.Test = test
+			h := http.HandlerFunc(r.ShortenHandler)
+			buf := bytes.NewBuffer([]byte(test.body))
+			request, err := http.NewRequest(test.method, "/", buf)
+			require.NoError(t, err)
+			request.Header.Add("Content-Type", test.contentType)
+			// rctx := chi.NewRouteContext()
+			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
+			// rctx.URLParams.Add("name", "joe")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, request)
+			defer w.Body.Reset()
+			body := w.Body.String()
+			var want string
+			if test.want.shortCode != "" {
+				want = "http://" + r.Config.GetConfig().OuterAddress + "/" + test.want.shortCode
+			}
+			assert.Equal(t, body, want)
+			assert.Equal(t, test.want.code, w.Result().StatusCode)
+			assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"))
+
+		})
+	}
+}
+func Test_expand(t *testing.T) {
+	tests := []test{
+		{
+			name:         "test expand #1",
+			methodAdd:    http.MethodPost,
+			methodExpand: http.MethodGet,
+			contentType:  "text/plain",
+			body:         "http://mail.ru",
+			shortCode:    "12345678",
+			want: want{
+				code:        http.StatusTemporaryRedirect,
+				response:    "",
+				contentType: "text/plain",
+				shortCode:   "12345678",
+				location:    "http://mail.ru",
+			},
+		},
+		{
+			name:         "test expand #2",
+			methodAdd:    http.MethodPost,
+			methodExpand: http.MethodGet,
+			contentType:  "text/plain; charset=utf-8",
+			body:         "http://ya.ru/",
+			shortCode:    "12345679",
+			want: want{
+				code:        http.StatusTemporaryRedirect,
+				response:    "",
+				contentType: "text/plain",
+				shortCode:   "12345679",
+				location:    "http://ya.ru/",
+			},
+		},
+		{
+			name:         "test expand #3",
+			methodAdd:    http.MethodPost,
+			methodExpand: http.MethodPost,
+			contentType:  "text/plain; charset=utf-8",
+			body:         "http://yandex.ru/",
+			want: want{
+				code:        http.StatusBadRequest,
+				response:    "",
+				contentType: "",
+				location:    "",
+			},
+		},
+	}
+
+	logger.Initialize("debug")
+	var strg = TestStorage{
+		InnerLinks:  map[string]string{},
+		OutterLinks: map[string]string{},
+	}
+	var cnf = Cnfg{
+		NetAddressServerShortener: NetAddressServer{Host: "localhoxt", Port: 8080},
+		NetAddressServerExpand:    NetAddressServer{Host: "localhoxt", Port: 8080},
+	}
+	var r = NewConnect(&strg, &cnf)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			strg.Test = test
+			h := http.HandlerFunc(r.ShortenHandler)
+			buf := bytes.NewBuffer([]byte(test.body))
+			request, err := http.NewRequest(test.methodAdd, "/", buf)
+			require.NoError(t, err)
+			request.Header.Add("Content-Type", test.contentType)
+			// rctx := chi.NewRouteContext()
+			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
+			// rctx.URLParams.Add("name", "joe")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, request)
+			body := w.Body.String()
+			defer w.Body.Reset()
+			h2 := http.HandlerFunc(r.ExpandHandler)
+			request2, err := http.NewRequest(test.methodExpand, body, nil)
+			require.NoError(t, err)
+			request2.Header.Add("Content-Type", test.contentType)
+			w2 := httptest.NewRecorder()
+			h2.ServeHTTP(w2, request2)
+
+			// проверяем код ответа
+			assert.Equal(t, test.want.code, w2.Result().StatusCode)
+			// ппроверяем location
+			assert.Equal(t, test.want.location, w2.Header().Get("Location"))
+		})
+	}
+}
