@@ -1,11 +1,16 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -103,8 +108,74 @@ func modelHandle(rw http.ResponseWriter, r *http.Request) {
 	rw.Write([]byte(carFunc(carID)))
 }
 
+type NetAddress struct {
+	Host string
+	Port int
+}
+
+func (n *NetAddress) String() string {
+	return fmt.Sprint(n.Host)
+}
+
+func (n *NetAddress) Set(flagValue string) error {
+	var e error
+	v := strings.Split(flagValue, "://")
+	if len(v) != 2 {
+		return fmt.Errorf("%s", "incorrect net address.")
+	}
+	a := strings.Split(v[1], ":")
+	if len(a) < 1 || len(a) > 2 {
+		return fmt.Errorf("%s", "incorrect net address.")
+	}
+	n.Host = a[0]
+	n.Port, e = strconv.Atoi(a[1])
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+var version = "0.0.1"
+
+type User struct {
+	Name string `env:"USERNAME"`
+}
+
+// допишите код реализации методов интерфейса
+// ...
+
 func main() {
-	r := chi.NewRouter()
+	var user User
+	err := env.Parse(&user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(user.Name)
+
+	u := os.Getenv("USERNAME")
+	fmt.Println(u)
+	envList := os.Environ()
+	// выводим первые пять элементов
+	for i := 0; i < 5 && i < len(envList); i++ {
+		fmt.Println(envList[i])
+	}
+	addr := new(NetAddress)
+	// если интерфейс не реализован,
+	// здесь будет ошибка компиляции
+	_ = flag.Value(addr)
+	// проверка реализации
+	flag.Var(addr, "addr", "Net address host:port")
+
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Version: %s\nUsage of %s:\n", version, os.Args[0])
+		flag.PrintDefaults()
+
+	}
+	flag.Parse()
+	fmt.Println(addr.Host)
+	fmt.Println(addr.Port)
+
+	/*r := chi.NewRouter()
 
 	r.Route("/car", func(r chi.Router) {
 		r.Get("/{id}", carHandle) // POST /car
@@ -118,5 +189,5 @@ func main() {
 		})
 	})
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8080", r))*/
 }
