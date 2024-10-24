@@ -200,6 +200,86 @@ func Test_shortenHandler(t *testing.T) {
 		})
 	}
 }
+func Test_shortenJsonHandler(t *testing.T) {
+	tests := []test{{
+		name:        "test shorten #1",
+		method:      http.MethodPost,
+		contentType: "application/json",
+		shortCode:   "",
+		body:        "{}",
+		want: want{
+			code:        201,
+			response:    "",
+			contentType: "application/json",
+			shortCode:   "",
+		},
+	},
+		{
+			name:        "test shorten #2",
+			method:      http.MethodPost,
+			contentType: "application/json; charset=utf-8",
+			shortCode:   "12345678",
+			body:        `{"url": "http://ya.ru/"}`,
+			want: want{
+				code:        201,
+				response:    "http://ya.ru/",
+				contentType: "application/json",
+				shortCode:   "12345678",
+			},
+		},
+		{
+			name:        "test shorten #3",
+			method:      http.MethodPost,
+			contentType: "text/json",
+			shortCode:   "",
+			body:        "http://ya.ru/",
+			want: want{
+				code:        400,
+				response:    "",
+				contentType: "",
+				shortCode:   "",
+			},
+		},
+	}
+
+	logger.Initialize("debug")
+	var strg = TestStorage{
+		InnerLinks:  map[string]string{},
+		OutterLinks: map[string]string{},
+	}
+	var cnf = Cnfg{
+		NetAddressServerShortener: NetAddressServer{Host: "localhoxt", Port: 8080},
+		NetAddressServerExpand:    NetAddressServer{Host: "localhoxt", Port: 8080},
+	}
+	var r = NewConnect(&strg, &cnf)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			strg.Test = test
+			h := http.HandlerFunc(r.ShortenJSONHandler)
+			buf := bytes.NewBuffer([]byte(test.body))
+			request, err := http.NewRequest(test.method, "/", buf)
+			require.NoError(t, err)
+			request.Header.Add("Content-Type", test.contentType)
+			// rctx := chi.NewRouteContext()
+			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
+			// rctx.URLParams.Add("name", "joe")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, request)
+			resp := w.Result()
+			defer resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
+			var want string
+			if test.want.shortCode != "" {
+				want = `{"result":"http://` + r.Config.GetConfig().OuterAddress + "/" + test.want.shortCode + `"}`
+			}
+			assert.Equal(t, string(body), want)
+			assert.Equal(t, test.want.code, resp.StatusCode)
+			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
+
+		})
+	}
+}
 func Test_expand(t *testing.T) {
 	tests := []test{
 		{

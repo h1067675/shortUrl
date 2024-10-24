@@ -1,6 +1,8 @@
 package netservice
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -38,7 +40,7 @@ func NewConnect(i MemStorager, c Configurer) *Connect {
 	return &r
 }
 
-// shortenHandler - хандлер сокращения URL, проверят Content-type, присваивает правильный Content-type ответу,
+// shortenHandler - хандлер сокращения URL, принимает text/plain, проверят Content-type, присваивает правильный Content-type ответу,
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
 //
@@ -68,6 +70,51 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
+type JsRequest struct {
+	URL string `json:"url"`
+}
+type JsResponce struct {
+	URL string `json:"result"`
+}
+
+// ShortenJSONHandler - хандлер сокращения URL, юпринимает application/json, проверят Content-type, присваивает правильный Content-type ответу,
+// записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
+// и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
+func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	// проверяем на content-type
+	if strings.Contains(request.Header.Get("Content-Type"), "application/json") {
+		// если прошли то присваиваем значение content-type: "application/json" и статус 201
+		responce.Header().Add("Content-Type", "application/json")
+		responce.WriteHeader(http.StatusCreated)
+		// получаем тело запроса
+		js, err := io.ReadAll(request.Body)
+		if err != nil {
+			log.Fatal(err)
+			responce.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
+		if len(js) > 0 {
+			var url JsRequest
+			if err := json.Unmarshal(js, &url); err != nil {
+				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
+			}
+			if url.URL == "" {
+				return
+			}
+			extURL := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
+			result := JsResponce{URL: extURL}
+			body, err := json.Marshal(result)
+			if err != nil {
+				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
+			}
+			responce.Write(body)
+		}
+		return
+	}
+	responce.WriteHeader(http.StatusBadRequest)
+}
+
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
@@ -90,6 +137,9 @@ func (c *Connect) RouterFunc() chi.Router {
 		r.Post("/", c.ShortenHandler) // POST запрос отправляем на сокращение ссылки
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/", c.ExpandHandler) // GET запрос с id направляем на извлечение ссылки
+		})
+		r.Route("/api/shorten", func(r chi.Router) {
+			r.Post("/", c.ShortenJSONHandler) // GET запрос с id направляем на извлечение ссылки
 		})
 	})
 	logger.Log.Debug("Server is running", zap.String("server address", c.Config.GetConfig().ServerAddress))
