@@ -9,8 +9,10 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
-	"github.com/h1067675/shortUrl/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/h1067675/shortUrl/internal/compress"
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
 type MemStorager interface {
@@ -131,7 +133,12 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 
 // routerFunc - создает роутер chi и делает маршрутизацию к хандлерам
 func (c *Connect) RouterFunc() chi.Router {
+	// Создаем chi роутер
 	c.Router = chi.NewRouter()
+	// Добавляем все функции middleware
+	c.Router.Use(compress.CompressHandle)
+	c.Router.Use(logger.RequestLogger)
+
 	// Делаем маршрутизацию
 	c.Router.Route("/", func(r chi.Router) {
 		r.Post("/", c.ShortenHandler) // POST запрос отправляем на сокращение ссылки
@@ -147,7 +154,7 @@ func (c *Connect) RouterFunc() chi.Router {
 }
 
 func (c *Connect) StartServer() {
-	if err := http.ListenAndServe(c.Config.GetConfig().ServerAddress, logger.RequestLogger(c.RouterFunc())); err != nil {
+	if err := http.ListenAndServe(c.Config.GetConfig().ServerAddress, c.RouterFunc()); err != nil {
 		logger.Log.Fatal(err.Error(), zap.String("server address", c.Config.GetConfig().ServerAddress))
 	}
 }

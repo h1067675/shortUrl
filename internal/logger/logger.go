@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 )
 
@@ -52,8 +51,8 @@ func Initialize(level string) error {
 	return nil
 }
 
-func RequestLogger(h chi.Router) http.Handler {
-	handfunc := func(w http.ResponseWriter, r *http.Request) {
+func RequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		responseData := &responseData{
 			status: 0,
@@ -63,7 +62,8 @@ func RequestLogger(h chi.Router) http.Handler {
 			ResponseWriter: w,
 			responseData:   responseData,
 		}
-		h.ServeHTTP(&nw, r)
+
+		next.ServeHTTP(&nw, r)
 
 		Log.Debug("User request:",
 			zap.String("URL", r.RequestURI),
@@ -71,6 +71,6 @@ func RequestLogger(h chi.Router) http.Handler {
 			zap.Duration("execution time", time.Since(start)),
 			zap.Int("size", nw.responseData.size),
 			zap.Int("status", nw.responseData.status))
-	}
-	return http.HandlerFunc(handfunc)
+
+	})
 }
