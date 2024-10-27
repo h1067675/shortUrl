@@ -50,7 +50,7 @@ func NewConnect(i MemStorager, c Configurer) *Connect {
 // 1. Валидацию на првильность указания ссылки которую нужно сократить
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
-	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") {
+	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
@@ -85,7 +85,7 @@ type JsResponce struct {
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
 func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
-	if strings.Contains(request.Header.Get("Content-Type"), "application/json") {
+	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
 		responce.WriteHeader(http.StatusCreated)
