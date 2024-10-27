@@ -21,7 +21,7 @@ func NewStorage() *Storage {
 	return &r
 }
 
-type StorageJson struct {
+type StorageJSON struct {
 	ShortLink    string `json:"short_url"`
 	OriginalLink string `json:"original_url"`
 }
@@ -75,9 +75,9 @@ func (s *Storage) GetURL(url string) (l string, e error) {
 }
 
 func (s *Storage) SaveToFile(file string) {
-	st := []StorageJson{}
+	st := []StorageJSON{}
 	for i, e := range s.InnerLinks {
-		st = append(st, StorageJson{i, e})
+		st = append(st, StorageJSON{i, e})
 	}
 	tf, err := json.Marshal(st)
 	if err != nil {
@@ -100,7 +100,7 @@ func (s *Storage) RestoreFromfile(file string) {
 		panic(err)
 	}
 	defer fl.Close()
-	st := []StorageJson{}
+	st := []StorageJSON{}
 	r := bufio.NewScanner(fl)
 	r.Scan()
 	bt := r.Bytes()

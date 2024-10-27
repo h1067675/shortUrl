@@ -132,6 +132,9 @@ func (c *Config) EnvConfigSet() {
 	if c.EnvConf.ServerExpand != "" {
 		c.NetAddressServerExpand.Set(c.EnvConf.ServerExpand)
 	}
+	if c.EnvConf.FileStoragePath != "" {
+		c.FileStoragePath.Set(c.EnvConf.FileStoragePath)
+	}
 }
 
 // Set - инициирует процесс установки настроек
