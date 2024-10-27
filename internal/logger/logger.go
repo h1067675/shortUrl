@@ -65,10 +65,7 @@ func RequestLogger(next http.Handler) http.Handler {
 
 		next.ServeHTTP(&nw, r)
 
-		Log.Debug("Request headers:")
-		for i, e := range r.Header {
-			zap.Strings(i, e)
-		}
+		Log.Debug("Request headers:", zap.Any("values", r.Header))
 
 		Log.Debug("User request:",
 			zap.String("URL", r.RequestURI),
