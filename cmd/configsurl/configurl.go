@@ -15,6 +15,7 @@ import (
 type Config struct {
 	NetAddressServerShortener NetAddressServer
 	NetAddressServerExpand    NetAddressServer
+	FileStoragePath           FilePath
 	EnvConf                   EnvConfig
 }
 
@@ -23,14 +24,19 @@ type NetAddressServer struct {
 	Port int
 }
 
+type FilePath struct {
+	Path string
+}
+
 type EnvConfig struct {
 	ServerShortener string `env:"SERVER_ADDRESS"`
 	ServerExpand    string `env:"BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 // NewConfig - функция создания конфига, получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
 // адреса по умолчанию: localhost:8080
-func NewConfig(netAddressServerShortener string, netAddressServerExpand string) *Config {
+func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string) *Config {
 	var r = Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
 		NetAddressServerShortener: NetAddressServer{
 			// переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
@@ -46,6 +52,7 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string) 
 	}
 	r.NetAddressServerShortener.Set(netAddressServerShortener)
 	r.NetAddressServerExpand.Set(netAddressServerExpand)
+	r.FileStoragePath.Set(fileStoragePath)
 	return &r
 }
 
@@ -95,10 +102,21 @@ func (n *NetAddressServer) Set(s string) (err error) {
 	return nil
 }
 
+func (n *FilePath) Set(s string) (err error) {
+	n.Path = s
+	return nil
+}
+
+// возвращаем путь файла
+func (n *FilePath) String() string {
+	return n.Path
+}
+
 // ParseFlags - разбираем атрибуты командной строки
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
+	flag.Var(&c.FileStoragePath, "f", "File storage path")
 	flag.Parse()
 }
 
@@ -124,11 +142,13 @@ func (c *Config) Set() {
 
 // GetConfig - передает структцру со строками адреса сервера сокращения и адреса сервера переадресации коротких адресов
 func (c *Config) GetConfig() struct {
-	ServerAddress string
-	OuterAddress  string
+	ServerAddress   string
+	OuterAddress    string
+	FileStoragePath string
 } {
 	return struct {
-		ServerAddress string
-		OuterAddress  string
-	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String()}
+		ServerAddress   string
+		OuterAddress    string
+		FileStoragePath string
+	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String(), FileStoragePath: c.FileStoragePath.Path}
 }

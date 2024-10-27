@@ -1,8 +1,11 @@
 package storage
 
 import (
+	"bufio"
+	"encoding/json"
 	"errors"
 	"math/rand"
+	"os"
 )
 
 type Storage struct {
@@ -16,6 +19,11 @@ func NewStorage() *Storage {
 		OutterLinks: map[string]string{},
 	}
 	return &r
+}
+
+type StorageJson struct {
+	ShortLink    string `json:"short_url"`
+	OriginalLink string `json:"original_url"`
 }
 
 // Функция генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление
@@ -64,4 +72,43 @@ func (s *Storage) GetURL(url string) (l string, e error) {
 		return l, nil
 	}
 	return "", errors.New("link not found")
+}
+
+func (s *Storage) SaveToFile(file string) {
+	st := []StorageJson{}
+	for i, e := range s.InnerLinks {
+		st = append(st, StorageJson{i, e})
+	}
+	tf, err := json.Marshal(st)
+	if err != nil {
+		panic(err)
+	}
+	fl, err := os.Create(file)
+	if err != nil {
+		panic(err)
+	}
+	defer fl.Close()
+	fl.Write(tf)
+}
+
+func (s *Storage) RestoreFromfile(file string) {
+	fl, err := os.Open(file)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return
+		}
+		panic(err)
+	}
+	defer fl.Close()
+	st := []StorageJson{}
+	r := bufio.NewScanner(fl)
+	r.Scan()
+	bt := r.Bytes()
+	if err := json.Unmarshal(bt, &st); err != nil {
+		panic(err)
+	}
+	for _, e := range st {
+		s.OutterLinks[e.OriginalLink] = e.ShortLink
+		s.InnerLinks[e.ShortLink] = e.OriginalLink
+	}
 }

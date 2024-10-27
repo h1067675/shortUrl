@@ -18,12 +18,14 @@ import (
 type MemStorager interface {
 	CreateShortURL(url string, adr string) string
 	GetURL(url string) (l string, e error)
+	SaveToFile(file string)
 }
 
 type Configurer interface {
 	GetConfig() struct {
-		ServerAddress string
-		OuterAddress  string
+		ServerAddress   string
+		OuterAddress    string
+		FileStoragePath string
 	}
 }
 
@@ -66,6 +68,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
 			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write([]byte(body))
 		}
 		return
@@ -107,6 +110,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 				return
 			}
 			extURL := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			result := JsResponce{URL: extURL}
 			body, err := json.Marshal(result)
 			if err != nil {

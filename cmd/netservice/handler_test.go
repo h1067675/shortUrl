@@ -59,6 +59,9 @@ func (s *TestStorage) GetURL(url string) (l string, e error) {
 func (s *TestStorage) TakeTestData(test test) {
 	s.Test = test
 }
+func (s *TestStorage) SaveToFile(file string) {
+
+}
 
 type NetAddressServer struct {
 	Host string
@@ -67,16 +70,22 @@ type NetAddressServer struct {
 type Cnfg struct {
 	NetAddressServerShortener NetAddressServer
 	NetAddressServerExpand    NetAddressServer
+	FileStoragePath           FilePath
+}
+type FilePath struct {
+	Path string
 }
 
 func (c *Cnfg) GetConfig() struct {
-	ServerAddress string
-	OuterAddress  string
+	ServerAddress   string
+	OuterAddress    string
+	FileStoragePath string
 } {
 	return struct {
-		ServerAddress string
-		OuterAddress  string
-	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String()}
+		ServerAddress   string
+		OuterAddress    string
+		FileStoragePath string
+	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String(), FileStoragePath: c.FileStoragePath.Path}
 }
 func (n *NetAddressServer) String() string {
 	return n.Host + ":" + strconv.Itoa(n.Port)
