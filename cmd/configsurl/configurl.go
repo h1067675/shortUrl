@@ -12,6 +12,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Структура настроек сервера
 type Config struct {
 	NetAddressServerShortener NetAddressServer
 	NetAddressServerExpand    NetAddressServer
@@ -19,22 +20,25 @@ type Config struct {
 	EnvConf                   EnvConfig
 }
 
+// Структура описывающая формат сетевого адреса для получения переменной среды
 type NetAddressServer struct {
 	Host string
 	Port int
 }
 
+// Структура описывающая формат пути к файлу сохранения для получения переменной среды
 type FilePath struct {
 	Path string
 }
 
+// Структура описывающая название переменных среды
 type EnvConfig struct {
 	ServerShortener string `env:"SERVER_ADDRESS"`
 	ServerExpand    string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-// NewConfig - функция создания конфига, получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
+// функция создания конфига, получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
 // адреса по умолчанию: localhost:8080
 func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string) *Config {
 	var r = Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
@@ -56,7 +60,7 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 	return &r
 }
 
-// checkNetAddress - функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
+// функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
 func checkNetAddress(s string, h string, p int) (host string, port int, e error) {
 	host, port = h, p
 	v := strings.Split(s, "://")
@@ -102,6 +106,7 @@ func (n *NetAddressServer) Set(s string) (err error) {
 	return nil
 }
 
+// Сохраняет значение переменной среды
 func (n *FilePath) Set(s string) (err error) {
 	n.Path = s
 	return nil
@@ -112,7 +117,7 @@ func (n *FilePath) String() string {
 	return n.Path
 }
 
-// ParseFlags - разбираем атрибуты командной строки
+// разбираем атрибуты командной строки
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
@@ -137,13 +142,13 @@ func (c *Config) EnvConfigSet() {
 	}
 }
 
-// Set - инициирует процесс установки настроек
+// инициирует процесс установки настроек
 func (c *Config) Set() {
 	c.ParseFlags()
 	c.EnvConfigSet()
 }
 
-// GetConfig - передает структцру со строками адреса сервера сокращения и адреса сервера переадресации коротких адресов
+// Возвращает данные настроек в текстовом формате
 func (c *Config) GetConfig() struct {
 	ServerAddress   string
 	OuterAddress    string

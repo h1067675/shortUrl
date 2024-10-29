@@ -50,6 +50,7 @@ type MySlice struct {
 func main() {
 	ret, err := json.Marshal(MySlice{ID: 7, Slice: []byte{1, 2, 3, 10, 11, 255}})
 	if err != nil {
+
 		panic(err)
 	}
 	fmt.Println(string(ret))

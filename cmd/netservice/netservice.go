@@ -15,12 +15,14 @@ import (
 	"github.com/h1067675/shortUrl/internal/logger"
 )
 
+// Интерфейс для Storage
 type MemStorager interface {
 	CreateShortURL(url string, adr string) string
 	GetURL(url string) (l string, e error)
 	SaveToFile(file string)
 }
 
+// Интерфейс для Config
 type Configurer interface {
 	GetConfig() struct {
 		ServerAddress   string
@@ -29,12 +31,14 @@ type Configurer interface {
 	}
 }
 
+// Структура с сетевыми методами
 type Connect struct {
 	Router  chi.Router
 	Storage MemStorager
 	Config  Configurer
 }
 
+// Функция создания коннектора
 func NewConnect(i MemStorager, c Configurer) *Connect {
 	var r = Connect{
 		Router:  chi.NewRouter(),
@@ -47,9 +51,6 @@ func NewConnect(i MemStorager, c Configurer) *Connect {
 // shortenHandler - хандлер сокращения URL, принимает text/plain, проверят Content-type, присваивает правильный Content-type ответу,
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
-//
-// Добавить:
-// 1. Валидацию на првильность указания ссылки которую нужно сократить
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
 	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
@@ -76,9 +77,12 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
+// Структура разбора json запроса
 type JsRequest struct {
 	URL string `json:"url"`
 }
+
+// Структура разбора json ответа
 type JsResponce struct {
 	URL string `json:"result"`
 }
@@ -95,7 +99,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 		// получаем тело запроса
 		js, err := io.ReadAll(request.Body)
 		if err != nil {
-			log.Fatal(err)
+			logger.Log.Error("Request wihtout body", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -128,7 +132,7 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 	if request.Method == http.MethodGet {
 		outURL, err := c.Storage.GetURL("http://" + c.Config.GetConfig().ServerAddress + request.URL.Path)
 		if err != nil {
-			log.Fatal(err)
+			logger.Log.Error("Can't to get URL", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 		}
 		responce.Header().Add("Location", outURL)
@@ -159,6 +163,7 @@ func (c *Connect) RouterFunc() chi.Router {
 	return c.Router
 }
 
+// Функция запуска сервера
 func (c *Connect) StartServer() {
 	if err := http.ListenAndServe(c.Config.GetConfig().ServerAddress, c.RouterFunc()); err != nil {
 		logger.Log.Fatal(err.Error(), zap.String("server address", c.Config.GetConfig().ServerAddress))

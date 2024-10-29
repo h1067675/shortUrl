@@ -8,11 +8,13 @@ import (
 	"os"
 )
 
+// Структура для лхранения ссылок
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
 }
 
+// Функция создает новое хранилище
 func NewStorage() *Storage {
 	var r = Storage{
 		InnerLinks:  map[string]string{},
@@ -21,6 +23,7 @@ func NewStorage() *Storage {
 	return &r
 }
 
+// структура описывает формат json для хранения данных в файле
 type StorageJSON struct {
 	ShortLink    string `json:"short_url"`
 	OriginalLink string `json:"original_url"`
@@ -74,6 +77,7 @@ func (s *Storage) GetURL(url string) (l string, e error) {
 	return "", errors.New("link not found")
 }
 
+// Функция сохранения хранилища в файл
 func (s *Storage) SaveToFile(file string) {
 	st := []StorageJSON{}
 	for i, e := range s.InnerLinks {
@@ -91,6 +95,7 @@ func (s *Storage) SaveToFile(file string) {
 	fl.Write(tf)
 }
 
+// Функция восстановления ссылок из файла
 func (s *Storage) RestoreFromfile(file string) {
 	fl, err := os.Open(file)
 	if err != nil {
