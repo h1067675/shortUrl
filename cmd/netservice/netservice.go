@@ -9,28 +9,36 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
-	"github.com/h1067675/shortUrl/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/h1067675/shortUrl/internal/compress"
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
+// Интерфейс для Storage
 type MemStorager interface {
 	CreateShortURL(url string, adr string) string
 	GetURL(url string) (l string, e error)
+	SaveToFile(file string)
 }
 
+// Интерфейс для Config
 type Configurer interface {
 	GetConfig() struct {
-		ServerAddress string
-		OuterAddress  string
+		ServerAddress   string
+		OuterAddress    string
+		FileStoragePath string
 	}
 }
 
+// Структура с сетевыми методами
 type Connect struct {
 	Router  chi.Router
 	Storage MemStorager
 	Config  Configurer
 }
 
+// Функция создания коннектора
 func NewConnect(i MemStorager, c Configurer) *Connect {
 	var r = Connect{
 		Router:  chi.NewRouter(),
@@ -43,12 +51,9 @@ func NewConnect(i MemStorager, c Configurer) *Connect {
 // shortenHandler - хандлер сокращения URL, принимает text/plain, проверят Content-type, присваивает правильный Content-type ответу,
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
-//
-// Добавить:
-// 1. Валидацию на првильность указания ссылки которую нужно сократить
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
-	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") {
+	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
@@ -60,9 +65,11 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 			responce.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		logger.Log.Debug("Body", zap.String("type json", string(url)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
 			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write([]byte(body))
 		}
 		return
@@ -70,9 +77,12 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
+// Структура разбора json запроса
 type JsRequest struct {
 	URL string `json:"url"`
 }
+
+// Структура разбора json ответа
 type JsResponce struct {
 	URL string `json:"result"`
 }
@@ -82,17 +92,18 @@ type JsResponce struct {
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
 func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http.Request) {
 	// проверяем на content-type
-	if strings.Contains(request.Header.Get("Content-Type"), "application/json") {
+	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
 		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		js, err := io.ReadAll(request.Body)
 		if err != nil {
-			log.Fatal(err)
+			logger.Log.Error("Request wihtout body", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		logger.Log.Debug("Body", zap.String("type json", string(js)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(js) > 0 {
 			var url JsRequest
@@ -103,6 +114,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 				return
 			}
 			extURL := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			result := JsResponce{URL: extURL}
 			body, err := json.Marshal(result)
 			if err != nil {
@@ -120,7 +132,7 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 	if request.Method == http.MethodGet {
 		outURL, err := c.Storage.GetURL("http://" + c.Config.GetConfig().ServerAddress + request.URL.Path)
 		if err != nil {
-			log.Fatal(err)
+			logger.Log.Error("Can't to get URL", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 		}
 		responce.Header().Add("Location", outURL)
@@ -131,7 +143,12 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 
 // routerFunc - создает роутер chi и делает маршрутизацию к хандлерам
 func (c *Connect) RouterFunc() chi.Router {
+	// Создаем chi роутер
 	c.Router = chi.NewRouter()
+	// Добавляем все функции middleware
+	c.Router.Use(compress.CompressHandle)
+	c.Router.Use(logger.RequestLogger)
+
 	// Делаем маршрутизацию
 	c.Router.Route("/", func(r chi.Router) {
 		r.Post("/", c.ShortenHandler) // POST запрос отправляем на сокращение ссылки
@@ -146,8 +163,9 @@ func (c *Connect) RouterFunc() chi.Router {
 	return c.Router
 }
 
+// Функция запуска сервера
 func (c *Connect) StartServer() {
-	if err := http.ListenAndServe(c.Config.GetConfig().ServerAddress, logger.RequestLogger(c.RouterFunc())); err != nil {
+	if err := http.ListenAndServe(c.Config.GetConfig().ServerAddress, c.RouterFunc()); err != nil {
 		logger.Log.Fatal(err.Error(), zap.String("server address", c.Config.GetConfig().ServerAddress))
 	}
 }
