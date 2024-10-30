@@ -9,11 +9,12 @@ import (
 
 func main() {
 	// Устанавливаем настройки приложения по умолчанию
-	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080")
+	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "/storage.json")
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
 	conf.Set()
 	// Создаем хранилище данных
 	var storage = storage.NewStorage()
+	storage.RestoreFromfile(conf.FileStoragePath.Path)
 	// Создаем соединение и помещвем в него переменные хранения и конфигурации
 	var conn = netservice.NewConnect(storage, conf)
 	// Инициализируем логгер
