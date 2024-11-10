@@ -8,17 +8,17 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type SqlDB struct {
+type SQLDB struct {
 	*sql.DB
 	Connected bool
 }
 
-func newDB(DatabasePath string) *SqlDB {
+func newDB(DatabasePath string) *SQLDB {
 	r, err := sql.Open("pgx", DatabasePath)
 	if err != nil {
-		return &SqlDB{Connected: false}
+		return &SQLDB{Connected: false}
 	}
-	return &SqlDB{DB: r, Connected: true}
+	return &SQLDB{DB: r, Connected: true}
 }
 
 // Функция проверяет соединение с базой данных

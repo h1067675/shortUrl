@@ -12,7 +12,7 @@ import (
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
-	DB          *SqlDB
+	DB          *SQLDB
 }
 
 // Функция создает новое хранилище
