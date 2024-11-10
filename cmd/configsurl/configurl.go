@@ -17,6 +17,7 @@ type Config struct {
 	NetAddressServerShortener NetAddressServer
 	NetAddressServerExpand    NetAddressServer
 	FileStoragePath           FilePath
+	DatabaseDSN               DatabasePath
 	EnvConf                   EnvConfig
 }
 
@@ -31,11 +32,17 @@ type FilePath struct {
 	Path string
 }
 
+// Структура описывающая формат адреса подключения к БД
+type DatabasePath struct {
+	Path string
+}
+
 // Структура описывающая название переменных среды
 type EnvConfig struct {
 	ServerShortener string `env:"SERVER_ADDRESS"`
 	ServerExpand    string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 // функция создания конфига, получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
@@ -57,6 +64,7 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 	r.NetAddressServerShortener.Set(netAddressServerShortener)
 	r.NetAddressServerExpand.Set(netAddressServerExpand)
 	r.FileStoragePath.Set(fileStoragePath)
+	r.DatabaseDSN.Set(fileStoragePath)
 	return &r
 }
 
@@ -117,12 +125,25 @@ func (n *FilePath) String() string {
 	return n.Path
 }
 
+// Сохраняет значение переменной среды
+func (n *DatabasePath) Set(s string) (err error) {
+	n.Path = s
+	return nil
+}
+
+// возвращаем путь файла
+func (n *DatabasePath) String() string {
+	return n.Path
+}
+
 // разбираем атрибуты командной строки
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
 	flag.Var(&c.FileStoragePath, "f", "File storage path")
+	flag.Var(&c.DatabaseDSN, "d", "Database path")
 	flag.Parse()
+	fmt.Print(c.DatabaseDSN)
 }
 
 // EnvConfigSet - забираем переменные окружения и если они установлены то указывам в конфиг из значения
@@ -140,6 +161,10 @@ func (c *Config) EnvConfigSet() {
 	if c.EnvConf.FileStoragePath != "" {
 		c.FileStoragePath.Set(c.EnvConf.FileStoragePath)
 	}
+	fmt.Print(c.EnvConf.DatabaseDSN)
+	if c.EnvConf.DatabaseDSN != "" {
+		c.DatabaseDSN.Set(c.EnvConf.DatabaseDSN)
+	}
 }
 
 // инициирует процесс установки настроек
@@ -153,10 +178,15 @@ func (c *Config) GetConfig() struct {
 	ServerAddress   string
 	OuterAddress    string
 	FileStoragePath string
+	DatabasePath    string
 } {
 	return struct {
 		ServerAddress   string
 		OuterAddress    string
 		FileStoragePath string
-	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String(), FileStoragePath: c.FileStoragePath.Path}
+		DatabasePath    string
+	}{ServerAddress: c.NetAddressServerShortener.String(),
+		OuterAddress:    c.NetAddressServerExpand.String(),
+		FileStoragePath: c.FileStoragePath.Path,
+		DatabasePath:    c.DatabaseDSN.Path}
 }

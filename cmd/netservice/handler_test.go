@@ -62,6 +62,9 @@ func (s *TestStorage) TakeTestData(test test) {
 func (s *TestStorage) SaveToFile(file string) {
 
 }
+func (s *TestStorage) PingDB() bool {
+	return false
+}
 
 type NetAddressServer struct {
 	Host string
@@ -71,8 +74,12 @@ type Cnfg struct {
 	NetAddressServerShortener NetAddressServer
 	NetAddressServerExpand    NetAddressServer
 	FileStoragePath           FilePath
+	DatabasePath              DatabasePath
 }
 type FilePath struct {
+	Path string
+}
+type DatabasePath struct {
 	Path string
 }
 
@@ -80,12 +87,14 @@ func (c *Cnfg) GetConfig() struct {
 	ServerAddress   string
 	OuterAddress    string
 	FileStoragePath string
+	DatabasePath    string
 } {
 	return struct {
 		ServerAddress   string
 		OuterAddress    string
 		FileStoragePath string
-	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String(), FileStoragePath: c.FileStoragePath.Path}
+		DatabasePath    string
+	}{ServerAddress: c.NetAddressServerShortener.String(), OuterAddress: c.NetAddressServerExpand.String(), FileStoragePath: c.FileStoragePath.Path, DatabasePath: c.DatabasePath.Path}
 }
 func (n *NetAddressServer) String() string {
 	return n.Host + ":" + strconv.Itoa(n.Port)

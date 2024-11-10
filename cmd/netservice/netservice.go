@@ -20,6 +20,7 @@ type MemStorager interface {
 	CreateShortURL(url string, adr string) string
 	GetURL(url string) (l string, e error)
 	SaveToFile(file string)
+	PingDB() bool
 }
 
 // Интерфейс для Config
@@ -28,6 +29,7 @@ type Configurer interface {
 		ServerAddress   string
 		OuterAddress    string
 		FileStoragePath string
+		DatabasePath    string
 	}
 }
 
@@ -141,6 +143,14 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
+// CheckDBHandler -
+func (c *Connect) CheckDBHandler(responce http.ResponseWriter, request *http.Request) {
+	if request.Method == http.MethodGet && c.Storage.PingDB() {
+		responce.WriteHeader(http.StatusOK)
+	}
+	responce.WriteHeader(http.StatusInternalServerError)
+}
+
 // routerFunc - создает роутер chi и делает маршрутизацию к хандлерам
 func (c *Connect) RouterFunc() chi.Router {
 	// Создаем chi роутер
@@ -156,7 +166,10 @@ func (c *Connect) RouterFunc() chi.Router {
 			r.Get("/", c.ExpandHandler) // GET запрос с id направляем на извлечение ссылки
 		})
 		r.Route("/api/shorten", func(r chi.Router) {
-			r.Post("/", c.ShortenJSONHandler) // GET запрос с id направляем на извлечение ссылки
+			r.Post("/", c.ShortenJSONHandler) // POST запрос с JSON телом
+		})
+		r.Route("/ping", func(r chi.Router) {
+			r.Get("/", c.CheckDBHandler) // GET проверяет работоспособность базы данных
 		})
 	})
 	logger.Log.Debug("Server is running", zap.String("server address", c.Config.GetConfig().ServerAddress))

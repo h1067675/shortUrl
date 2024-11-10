@@ -8,17 +8,19 @@ import (
 	"os"
 )
 
-// Структура для лхранения ссылок
+// Структура для хранения ссылок
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
+	DB          *SqlDB
 }
 
 // Функция создает новое хранилище
-func NewStorage() *Storage {
+func NewStorage(database string) *Storage {
 	var r = Storage{
 		InnerLinks:  map[string]string{},
 		OutterLinks: map[string]string{},
+		DB:          newDB(database),
 	}
 	return &r
 }

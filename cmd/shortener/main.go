@@ -13,7 +13,7 @@ func main() {
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
 	conf.Set()
 	// Создаем хранилище данных
-	var storage = storage.NewStorage()
+	var storage = storage.NewStorage(conf.DatabaseDSN.String())
 	storage.RestoreFromfile(conf.FileStoragePath.Path)
 	// Создаем соединение и помещвем в него переменные хранения и конфигурации
 	var conn = netservice.NewConnect(storage, conf)
