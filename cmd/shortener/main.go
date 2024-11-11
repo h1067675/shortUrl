@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	// Инициализируем логгер
+	logger.Initialize("debug")
 	// Устанавливаем настройки приложения по умолчанию
 	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "/storage.json")
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
@@ -21,8 +23,6 @@ func main() {
 	}
 	// Создаем соединение и помещвем в него переменные хранения и конфигурации
 	var conn = netservice.NewConnect(storage, conf)
-	// Инициализируем логгер
-	logger.Initialize("debug")
 	// Запускаем сервер
 	conn.StartServer()
 }

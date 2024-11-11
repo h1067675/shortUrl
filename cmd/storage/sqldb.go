@@ -39,7 +39,7 @@ func (s *Storage) PingDB() bool {
 func (s *Storage) checkDBTable() bool {
 	_, err := s.DB.Query("SELECT * FROM links LIMIT 1")
 	if err != nil {
-		logger.Log.Error("data base don't exist.", zap.Error(err))
+		logger.Log.Debug("data base don't exist.", zap.Error(err))
 	}
 	return err == nil
 }
@@ -47,6 +47,9 @@ func (s *Storage) checkDBTable() bool {
 // Функция проверяет наличие таблицы в базе данных
 func (s *Storage) createDBTable() bool {
 	_, err := s.DB.Exec("CREATE TABLE links (Id SERIAL PRIMARY KEY, InnerLink CHARACTER VARYING(256), OutterLink CHARACTER VARYING(256))")
+	if err != nil {
+		logger.Log.Debug("data base don't exist.", zap.Error(err))
+	}
 	return err == nil
 }
 
