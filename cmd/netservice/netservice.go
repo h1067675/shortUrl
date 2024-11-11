@@ -71,7 +71,6 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
 			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
-			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write([]byte(body))
 		}
 		return
