@@ -6,6 +6,9 @@ import (
 	"errors"
 	"math/rand"
 	"os"
+
+	"github.com/h1067675/shortUrl/internal/logger"
+	"go.uber.org/zap"
 )
 
 // Структура для хранения ссылок
@@ -65,6 +68,7 @@ func (s *Storage) createShortCode(adr string) string {
 // если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку
 func (s *Storage) CreateShortURL(url string, adr string) string {
 	var result string
+	logger.Log.Debug("DB connection", zap.Bool("is", s.DB.Connected))
 	if s.DB.Connected {
 		result = s.saveShortURLBD(url, adr)
 	} else {

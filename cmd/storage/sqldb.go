@@ -37,10 +37,14 @@ func (s *Storage) PingDB() bool {
 
 // Функция проверяет наличие таблицы в базе данных
 func (s *Storage) checkDBTable() bool {
-	_, err := s.DB.Query("SELECT * FROM links LIMIT 1")
+	rows, err := s.DB.Query("SELECT * FROM links LIMIT 1")
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
 	}
+	defer func() {
+		_ = rows.Close()
+		_ = rows.Err() // or modify return value
+	}()
 	return err == nil
 }
 
