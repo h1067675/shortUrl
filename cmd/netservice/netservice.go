@@ -158,9 +158,10 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 		}
 		logger.Log.Debug("Body", zap.String("type json", string(js)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
+		// jjs := []byte(`[{"correlation_id": "1","original_url": "ya.ru"}]`)
 		if len(js) > 0 {
 			var urls []JsBatchRequest
-			var resulturls []JsBatchRequest
+			var resulturls []JsBatchResponce
 			if err := json.Unmarshal(js, &urls); err != nil {
 				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
 			}
@@ -168,7 +169,7 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 				return
 			}
 			for _, e := range urls {
-				resulturls = append(resulturls, JsBatchRequest{ID: e.ID, URL: c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress)})
+				resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress)})
 			}
 			body, err := json.Marshal(resulturls)
 			if err != nil {
