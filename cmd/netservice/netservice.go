@@ -72,6 +72,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		if len(url) > 0 {
 			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
 			logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write([]byte(body))
 		}
 		return
@@ -133,6 +134,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 			if err != nil {
 				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			}
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write(body)
 		}
 		return
@@ -175,6 +177,7 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 			if err != nil {
 				logger.Log.Error("Error json serialization")
 			}
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write(body)
 		}
 		return
