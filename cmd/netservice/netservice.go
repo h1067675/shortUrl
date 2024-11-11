@@ -67,10 +67,11 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 			responce.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logger.Log.Debug("Body", zap.String("type json", string(url)))
+		logger.Log.Debug("Body", zap.String("request URL", string(url)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
 			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
+			logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
 			responce.Write([]byte(body))
 		}
 		return
