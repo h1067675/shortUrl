@@ -17,7 +17,7 @@ func main() {
 	// Создаем хранилище данных
 	var storage = storage.NewStorage(conf.DatabaseDSN.String())
 	// Если соединение с базой данных не установлено или не получилось создать таблицу, то загружаем ссылки из файла
-	if !storage.DB.Connected {
+	if !storage.DB.Connected && conf.FileStoragePath.Path != "" {
 		storage.RestoreFromfile(conf.FileStoragePath.Path)
 		defer storage.SaveToFile(conf.GetConfig().FileStoragePath)
 	}

@@ -40,12 +40,13 @@ func (s *Storage) checkDBTable() bool {
 	rows, err := s.DB.Query("SELECT * FROM links LIMIT 1")
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
+		return false
 	}
 	defer func() {
 		_ = rows.Close()
 		_ = rows.Err() // or modify return value
 	}()
-	return err == nil
+	return true
 }
 
 // Функция проверяет наличие таблицы в базе данных
