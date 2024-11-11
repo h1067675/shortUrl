@@ -32,3 +32,44 @@ func (s *Storage) PingDB() bool {
 	}
 	return false
 }
+
+// Функция проверяет наличие таблицы в базе данных
+func (s *Storage) checkDBTable() bool {
+	_, err := s.DB.Query("SELECT * FROM links LIMIT 1")
+	if err != nil {
+		panic(err)
+	}
+	return err == nil
+}
+
+// Функция проверяет наличие таблицы в базе данных
+func (s *Storage) createDBTable() bool {
+	_, err := s.DB.Exec("CREATE TABLE links (Id SERIAL PRIMARY KEY, InnerLink CHARACTER VARYING(256), OutterLink CHARACTER VARYING(256))")
+	return err == nil
+}
+
+// Функция создания короткого URL и сохранения его в базу данных
+func (s *Storage) saveShortURLBD(url string, adr string) string {
+	row := s.DB.QueryRow("SELECT InnerLink FROM links WHERE OutterLink = '#1'", url)
+	var result string
+	err := row.Scan(&result)
+	if err != nil {
+		result = s.createShortCode(adr)
+		_, err := s.DB.Exec("INSERT INTO links (InnerLink, OutterLink) VALUES ('#1', '#2')", result, url)
+		if err != nil {
+			return ""
+		}
+	}
+	return result
+}
+
+// Функция получения внешнего URL по короткому URL из базы данных
+func (s *Storage) getURLBD(url string) string {
+	row := s.DB.QueryRow("SELECT OutterLink FROM links WHERE InnerLink = '#1'", url)
+	var result string
+	err := row.Scan(&result)
+	if err != nil {
+		return ""
+	}
+	return result
+}

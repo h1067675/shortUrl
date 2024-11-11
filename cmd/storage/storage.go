@@ -22,6 +22,11 @@ func NewStorage(database string) *Storage {
 		OutterLinks: map[string]string{},
 		DB:          newDB(database),
 	}
+	if !r.checkDBTable() {
+		if !r.createDBTable() {
+			r.DB.Connected = false
+		}
+	}
 	return &r
 }
 
@@ -59,22 +64,34 @@ func (s *Storage) createShortCode(adr string) string {
 // Функция получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
 // если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку
 func (s *Storage) CreateShortURL(url string, adr string) string {
-	val, ok := s.OutterLinks[url]
-	if ok {
-		return val
+	var result string
+	if s.DB.Connected {
+		result = s.saveShortURLBD(url, adr)
+	} else {
+		val, ok := s.OutterLinks[url]
+		if ok {
+			return val
+		}
+		result := s.createShortCode(adr)
+		s.OutterLinks[url] = result
+		s.InnerLinks[result] = url
 	}
-	result := s.createShortCode(adr)
-	s.OutterLinks[url] = result
-	s.InnerLinks[result] = url
 	return result
 }
 
 // Функция получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
 // если нет, то возвращает ошибку
 func (s *Storage) GetURL(url string) (l string, e error) {
-	l, ok := s.InnerLinks[url]
-	if ok {
-		return l, nil
+	if s.DB.Connected {
+		l = s.getURLBD(url)
+		if l != "" {
+			return l, nil
+		}
+	} else {
+		l, ok := s.InnerLinks[url]
+		if ok {
+			return l, nil
+		}
 	}
 	return "", errors.New("link not found")
 }

@@ -79,6 +79,18 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
+// Структура разбора batch json запроса
+type JsBatchRequest struct {
+	ID  string `json:"correlation_id"`
+	URL string `json:"original_url"`
+}
+
+// Структура разбора batch json ответа
+type JsBatchResponce struct {
+	ID      string `json:"correlation_id"`
+	SortURL string `json:"short_url"`
+}
+
 // Структура разбора json запроса
 type JsRequest struct {
 	URL string `json:"url"`
@@ -116,11 +128,51 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 				return
 			}
 			extURL := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
-			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			result := JsResponce{URL: extURL}
 			body, err := json.Marshal(result)
 			if err != nil {
 				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
+			}
+			responce.Write(body)
+		}
+		return
+	}
+	responce.WriteHeader(http.StatusBadRequest)
+}
+
+// ShortenBatchJSONHandler - хандлер сокращения URL, юпринимает application/json, проверят Content-type, присваивает правильный Content-type ответу,
+// записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
+// и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
+func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	// проверяем на content-type
+	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
+		// если прошли то присваиваем значение content-type: "application/json" и статус 201
+		responce.Header().Add("Content-Type", "application/json")
+		responce.WriteHeader(http.StatusCreated)
+		// получаем тело запроса
+		js, err := io.ReadAll(request.Body)
+		if err != nil {
+			logger.Log.Error("Request wihtout body", zap.Error(err))
+			responce.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		logger.Log.Debug("Body", zap.String("type json", string(js)))
+		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
+		if len(js) > 0 {
+			var urls []JsBatchRequest
+			var resulturls []JsBatchRequest
+			if err := json.Unmarshal(js, &urls); err != nil {
+				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
+			}
+			if len(urls) == 0 {
+				return
+			}
+			for _, e := range urls {
+				resulturls = append(resulturls, JsBatchRequest{ID: e.ID, URL: c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress)})
+			}
+			body, err := json.Marshal(resulturls)
+			if err != nil {
+				logger.Log.Error("Error json serialization")
 			}
 			responce.Write(body)
 		}
@@ -166,7 +218,8 @@ func (c *Connect) RouterFunc() chi.Router {
 			r.Get("/", c.ExpandHandler) // GET запрос с id направляем на извлечение ссылки
 		})
 		r.Route("/api/shorten", func(r chi.Router) {
-			r.Post("/", c.ShortenJSONHandler) // POST запрос с JSON телом
+			r.Post("/", c.ShortenJSONHandler)           // POST запрос с JSON телом
+			r.Post("/batch", c.ShortenBatchJSONHandler) // POST запрос с JSON телом
 		})
 		r.Route("/ping", func(r chi.Router) {
 			r.Get("/", c.CheckDBHandler) // GET проверяет работоспособность базы данных
