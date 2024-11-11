@@ -191,6 +191,7 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 		}
 		responce.Header().Add("Location", outURL)
 		responce.WriteHeader(http.StatusTemporaryRedirect)
+		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
 }
