@@ -78,7 +78,7 @@ func (s *Storage) saveShortURLBD(url string, adr string) string {
 
 // Функция получения внешнего URL по короткому URL из базы данных
 func (s *Storage) getURLBD(url string) string {
-	row := s.DB.QueryRow("SELECT OutterLink FROM links WHERE InnerLink = '$1'", url)
+	row := s.DB.QueryRow("SELECT OutterLink FROM links WHERE InnerLink = $1", url)
 	var result string
 	err := row.Scan(&result)
 	if err != nil {
