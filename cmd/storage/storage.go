@@ -116,6 +116,7 @@ func (s *Storage) SaveToFile(file string) {
 	}
 	defer fl.Close()
 	fl.Write(tf)
+	logger.Log.Debug("Saved to ", zap.String("file", file))
 }
 
 // Функция восстановления ссылок из файла
@@ -132,11 +133,14 @@ func (s *Storage) RestoreFromfile(file string) {
 	r := bufio.NewScanner(fl)
 	r.Scan()
 	bt := r.Bytes()
-	if err := json.Unmarshal(bt, &st); err != nil {
-		panic(err)
+	if len(bt) > 0 {
+		if err := json.Unmarshal(bt, &st); err != nil {
+			panic(err)
+		}
+		for _, e := range st {
+			s.OutterLinks[e.OriginalLink] = e.ShortLink
+			s.InnerLinks[e.ShortLink] = e.OriginalLink
+		}
 	}
-	for _, e := range st {
-		s.OutterLinks[e.OriginalLink] = e.ShortLink
-		s.InnerLinks[e.ShortLink] = e.OriginalLink
-	}
+
 }

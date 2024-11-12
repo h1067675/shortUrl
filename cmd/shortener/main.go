@@ -11,7 +11,7 @@ func main() {
 	// Инициализируем логгер
 	logger.Initialize("debug")
 	// Устанавливаем настройки приложения по умолчанию
-	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "/storage.json")
+	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json")
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
 	conf.Set()
 	// Создаем хранилище данных
