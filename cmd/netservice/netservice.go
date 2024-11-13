@@ -192,12 +192,8 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 				extURL, _ := c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress)
 				resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: extURL})
 			}
-			body, err = json.Marshal(resulturls)
-			if err != nil {
-				responce.WriteHeader(http.StatusConflict)
-			}
+			body, _ = json.Marshal(resulturls)
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
-			responce.Write(body)
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write(body)
