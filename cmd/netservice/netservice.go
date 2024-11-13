@@ -62,7 +62,6 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
-		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		url, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -81,6 +80,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write([]byte(body))
 		}
+		responce.WriteHeader(http.StatusCreated)
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
@@ -116,7 +116,6 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
-		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		js, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -146,6 +145,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write(body)
 		}
+		responce.WriteHeader(http.StatusCreated)
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
@@ -159,7 +159,6 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
-		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		js, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -190,6 +189,7 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write(body)
 		}
+		responce.WriteHeader(http.StatusCreated)
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
