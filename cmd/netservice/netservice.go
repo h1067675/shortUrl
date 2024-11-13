@@ -185,6 +185,7 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
 			}
 			if len(urls) == 0 {
+				responce.WriteHeader(http.StatusCreated)
 				return
 			}
 			for _, e := range urls {
