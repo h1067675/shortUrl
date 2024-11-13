@@ -62,6 +62,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
+		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		url, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -75,8 +76,6 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 			body, err = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
 			if err != nil {
 				responce.WriteHeader(http.StatusConflict)
-			} else {
-				responce.WriteHeader(http.StatusCreated)
 			}
 			logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
@@ -117,6 +116,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
+		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		js, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -137,8 +137,6 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 			extURL, err := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
 			if err != nil {
 				responce.WriteHeader(http.StatusConflict)
-			} else {
-				responce.WriteHeader(http.StatusCreated)
 			}
 			result := JsResponce{URL: extURL}
 			body, err := json.Marshal(result)
@@ -161,6 +159,7 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
+		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
 		js, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -187,8 +186,6 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 			body, err := json.Marshal(resulturls)
 			if err != nil {
 				responce.WriteHeader(http.StatusConflict)
-			} else {
-				responce.WriteHeader(http.StatusCreated)
 			}
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 			responce.Write(body)
