@@ -87,6 +87,7 @@ func (s *Storage) CreateShortURL(url string, adr string) (result string, err err
 		result = s.createShortCode(adr)
 		s.OutterLinks[url] = result
 		s.InnerLinks[result] = url
+		return result, err
 	}
 	return
 }
