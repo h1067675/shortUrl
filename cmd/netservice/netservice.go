@@ -136,6 +136,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
 			}
 			if url.URL == "" {
+				responce.WriteHeader(http.StatusCreated)
 				return
 			}
 			extURL, err := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
@@ -148,7 +149,6 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			}
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
-			responce.Write(body)
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write(body)
