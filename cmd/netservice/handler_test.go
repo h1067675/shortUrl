@@ -39,15 +39,15 @@ type TestStorage struct {
 	Test        test
 }
 
-func (s *TestStorage) CreateShortURL(url string, adr string) string {
+func (s *TestStorage) CreateShortURL(url string, adr string) (string, error) {
 	val, ok := s.OutterLinks[url]
 	if ok {
-		return val
+		return val, nil
 	}
 	result := "http://" + adr + "/" + s.Test.shortCode
 	s.OutterLinks[url] = result
 	s.InnerLinks[result] = url
-	return result
+	return result, nil
 }
 func (s *TestStorage) GetURL(url string) (l string, e error) {
 	l, ok := s.InnerLinks[url]

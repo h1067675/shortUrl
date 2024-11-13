@@ -3,11 +3,15 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
-	"github.com/h1067675/shortUrl/internal/logger"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
 type SQLDB struct {
@@ -37,7 +41,8 @@ func (s *Storage) PingDB() bool {
 
 // Функция проверяет наличие таблицы в базе данных
 func (s *Storage) checkDBTable() bool {
-	rows, err := s.DB.Query("SELECT * FROM links LIMIT 1")
+	s.DB.Exec("DROP TABLE links;")
+	rows, err := s.DB.Query("SELECT * FROM links LIMIT 1;")
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
 		return false
@@ -53,8 +58,9 @@ func (s *Storage) checkDBTable() bool {
 func (s *Storage) createDBTable() bool {
 	_, err := s.DB.Exec(`CREATE TABLE links (
 		Id SERIAL PRIMARY KEY, 
-		InnerLink CHARACTER VARYING(256), 
-		OutterLink CHARACTER VARYING(256))`)
+		InnerLink TEXT, 
+		OutterLink TEXT UNIQUE
+		);`)
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
 	}
@@ -62,23 +68,28 @@ func (s *Storage) createDBTable() bool {
 }
 
 // Функция создания короткого URL и сохранения его в базу данных
-func (s *Storage) saveShortURLBD(url string, adr string) string {
-	row := s.DB.QueryRow("SELECT InnerLink FROM links WHERE OutterLink = $1", url)
-	var result string
-	err := row.Scan(&result)
+func (s *Storage) saveShortURLBD(url string, adr string) (result string, err error) {
+	result = s.createShortCode(adr)
+	_, err = s.DB.Exec("INSERT INTO links (InnerLink, OutterLink) VALUES ($1, $2);", result, url)
 	if err != nil {
-		result = s.createShortCode(adr)
-		_, err := s.DB.Exec("INSERT INTO links (InnerLink, OutterLink) VALUES ($1, $2)", result, url)
-		if err != nil {
-			return ""
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+			err = ErrLinkExsist
+			row := s.DB.QueryRow("SELECT InnerLink FROM links WHERE OutterLink = $1;", url)
+			err := row.Scan(&result)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
 		}
 	}
-	return result
+	return result, err
 }
 
 // Функция получения внешнего URL по короткому URL из базы данных
 func (s *Storage) getURLBD(url string) string {
-	row := s.DB.QueryRow("SELECT OutterLink FROM links WHERE InnerLink = $1", url)
+	row := s.DB.QueryRow("SELECT OutterLink FROM links WHERE InnerLink = $1;", url)
 	var result string
 	err := row.Scan(&result)
 	if err != nil {
