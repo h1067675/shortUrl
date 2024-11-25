@@ -41,9 +41,9 @@ func NewStorage(database string) *Storage {
 		UsersLinks:  map[string][]int{},
 		DB:          newDB(database),
 	}
-	r.DB.Exec("DROP TABLE links;")
-	r.DB.Exec("DROP TABLE users;")
-	r.DB.Exec("DROP TABLE users_links;")
+	// r.DB.Exec("DROP TABLE links;")
+	// r.DB.Exec("DROP TABLE users;")
+	// r.DB.Exec("DROP TABLE users_links;")
 	if !r.checkLinksDBTable() {
 		if !r.createLinksDBTable() {
 			r.DB.Connected = false
@@ -131,7 +131,7 @@ func (s *Storage) GetNewUserID() (result int, err error) {
 		}
 	} else {
 		result = 1
-		for i, _ := range s.Users {
+		for i := range s.Users {
 			if i > result {
 				result = i
 			}

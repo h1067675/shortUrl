@@ -143,15 +143,18 @@ func (s *Storage) getUserURLBD(id int) (result []struct {
 	URL      string
 }, err error) {
 	rows, err := s.DB.Query("SELECT InnerLink, OutterLink FROM links WHERE Id IN (SELECT LinkId FROM users_links WHERE Id = $1);", id)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var in string
 		var out string
 		err = rows.Scan(&in, &out)
+		if err != nil {
+			return nil, err
+		}
 		result = append(result, struct {
 			ShortURL string
 			URL      string
