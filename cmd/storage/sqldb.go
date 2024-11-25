@@ -110,6 +110,7 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
 			errexit = ErrLinkExsist
+			logger.Log.Debug("link alredy exist")
 		} else {
 			return "", err
 		}
@@ -123,6 +124,7 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 	if err != nil {
 		return "", err
 	}
+	logger.Log.Debug("link added to user", zap.Int("id", userid))
 	return result, errexit
 }
 
