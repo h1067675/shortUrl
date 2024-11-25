@@ -2,6 +2,7 @@ package netservice
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -212,7 +213,8 @@ func Test_shortenHandler(t *testing.T) {
 			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
-			h.ServeHTTP(w, request)
+			ctx := context.WithValue(request.Context(), keyUserId, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
 			resp := w.Result()
 			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
@@ -292,7 +294,9 @@ func Test_shortenJsonHandler(t *testing.T) {
 			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
-			h.ServeHTTP(w, request)
+
+			ctx := context.WithValue(request.Context(), keyUserId, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
 			resp := w.Result()
 			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
@@ -377,7 +381,8 @@ func Test_expand(t *testing.T) {
 			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
-			h.ServeHTTP(w, request)
+			ctx := context.WithValue(request.Context(), keyUserId, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
 			resp := w.Result()
 			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
