@@ -37,11 +37,13 @@ func NewStorage(database string) *Storage {
 	var r = Storage{
 		InnerLinks:  map[string]string{},
 		OutterLinks: map[string]string{},
+		Users:       map[int][]string{},
+		UsersLinks:  map[string][]int{},
 		DB:          newDB(database),
 	}
-	r.DB.Query("DROP TABLE links;")
-	r.DB.Query("DROP TABLE users;")
-	r.DB.Query("DROP TABLE users_links;")
+	r.DB.Exec("DROP TABLE links;")
+	r.DB.Exec("DROP TABLE users;")
+	r.DB.Exec("DROP TABLE users_links;")
 	if !r.checkLinksDBTable() {
 		if !r.createLinksDBTable() {
 			r.DB.Connected = false
@@ -109,13 +111,33 @@ func (s *Storage) CreateShortURL(url string, adr string, userid int) (result str
 			}
 			s.Users[userid] = append(s.Users[userid], result)
 			s.UsersLinks[result] = append(s.UsersLinks[result], userid)
+			return result, err
 		}
 		result = s.createShortCode(adr)
 		s.OutterLinks[url] = result
 		s.InnerLinks[result] = url
+		s.Users[userid] = append(s.Users[userid], result)
+		s.UsersLinks[result] = append(s.UsersLinks[result], userid)
 		return result, err
 	}
 	return
+}
+
+func (s *Storage) GetNewUserID() (result int, err error) {
+	if s.DB.Connected {
+		result, err = s.getNewUserIDDB()
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		result = 1
+		for i, _ := range s.Users {
+			if i > result {
+				result = i
+			}
+		}
+	}
+	return result, nil
 }
 
 // Функция получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
@@ -162,7 +184,7 @@ func (s *Storage) GetUserURLS(id int) (result []struct {
 func (s *Storage) SaveToFile(file string) {
 	st := []StorageJSON{}
 	for i, e := range s.InnerLinks {
-		st = append(st, StorageJSON{i, e, s.UsersLinks[e]})
+		st = append(st, StorageJSON{i, e, s.UsersLinks[i]})
 	}
 	tf, err := json.Marshal(st)
 	if err != nil {

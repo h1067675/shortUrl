@@ -11,13 +11,13 @@ type Claims struct {
 	UserID int
 }
 
-const SECRET_KEY = "supersecretkey"
+const Secret_KEY = "supersecretkey"
 
 func CheckToken(tokenString string) (int, error) {
 	// заадавем утверждения Claims
 	var cl = Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, &cl, func(t *jwt.Token) (interface{}, error) {
-		return []byte(SECRET_KEY), nil
+		return []byte(Secret_KEY), nil
 	})
 	if err != nil {
 		return -1, err
@@ -37,7 +37,7 @@ func SetToken(id int) (string, error) {
 	// создаём новый токен с алгоритмом подписи HS256 и утверждениями — Claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, cl)
 	// создаём строку токена
-	tokenString, err := token.SignedString([]byte(SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(Secret_KEY))
 	if err != nil {
 		return "", err
 	}

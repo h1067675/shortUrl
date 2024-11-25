@@ -24,7 +24,7 @@ var ErrLinkExsist = errors.New("link already exsist")
 type key int
 
 const (
-	keyUserId key = iota
+	keyUserID key = iota
 	keyNewUser
 )
 
@@ -76,7 +76,7 @@ func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Req
 		logger.Log.Debug("Body", zap.String("request URL", string(url)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
-			body, err = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress, request.Context().Value(keyUserId).(int))
+			body, err = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress, request.Context().Value(keyUserID).(int))
 			if err != nil {
 				responce.WriteHeader(http.StatusConflict)
 			}
@@ -147,7 +147,7 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 				responce.WriteHeader(http.StatusCreated)
 				return
 			}
-			extURL, err := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress, request.Context().Value(keyUserId).(int))
+			extURL, err := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress, request.Context().Value(keyUserID).(int))
 			if err != nil {
 				responce.WriteHeader(http.StatusConflict)
 			}
@@ -197,7 +197,7 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 				return
 			}
 			for _, e := range urls {
-				extURL, _ := c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress, request.Context().Value(keyUserId).(int))
+				extURL, _ := c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress, request.Context().Value(keyUserID).(int))
 				resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: extURL})
 			}
 			body, _ = json.Marshal(resulturls)
@@ -233,7 +233,7 @@ func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *h
 			responce.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		urls, _ := c.Storage.GetUserURLS(ctx.Value(keyUserId).(int))
+		urls, _ := c.Storage.GetUserURLS(ctx.Value(keyUserID).(int))
 		if len(urls) == 0 {
 			responce.WriteHeader(http.StatusNoContent)
 			return
@@ -266,7 +266,7 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		if err == nil {
 			userid, err = authorization.CheckToken(cookie.Value)
 			if err == nil {
-				ctx = context.WithValue(request.Context(), keyUserId, userid)
+				ctx = context.WithValue(request.Context(), keyUserID, userid)
 			}
 		}
 		if err != nil {
@@ -285,7 +285,7 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 				Path:  "/",
 			}
 			http.SetCookie(response, cookie)
-			ctx = context.WithValue(request.Context(), keyUserId, userid)
+			ctx = context.WithValue(request.Context(), keyUserID, userid)
 			ctx = context.WithValue(ctx, keyNewUser, true)
 		}
 		next.ServeHTTP(response, request.WithContext(ctx))
