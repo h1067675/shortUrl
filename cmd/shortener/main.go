@@ -8,17 +8,20 @@ import (
 )
 
 func main() {
+	// Инициализируем логгер
+	logger.Initialize("debug")
 	// Устанавливаем настройки приложения по умолчанию
-	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "/storage.json")
+	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json")
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
 	conf.Set()
 	// Создаем хранилище данных
 	var storage = storage.NewStorage(conf.DatabaseDSN.String())
-	storage.RestoreFromfile(conf.FileStoragePath.Path)
+	// Если соединение с базой данных не установлено или не получилось создать таблицу, то загружаем ссылки из файла
+	if !storage.DB.Connected && conf.FileStoragePath.Path != "" {
+		storage.RestoreFromfile(conf.FileStoragePath.Path)
+	}
 	// Создаем соединение и помещвем в него переменные хранения и конфигурации
 	var conn = netservice.NewConnect(storage, conf)
-	// Инициализируем логгер
-	logger.Initialize("debug")
 	// Запускаем сервер
 	conn.StartServer()
 }

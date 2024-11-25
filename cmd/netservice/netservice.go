@@ -2,6 +2,7 @@ package netservice
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,9 +16,11 @@ import (
 	"github.com/h1067675/shortUrl/internal/logger"
 )
 
+var ErrLinkExsist = errors.New("link already exsist")
+
 // Интерфейс для Storage
 type MemStorager interface {
-	CreateShortURL(url string, adr string) string
+	CreateShortURL(url string, adr string) (string, error)
 	GetURL(url string) (l string, e error)
 	SaveToFile(file string)
 	PingDB() bool
@@ -54,29 +57,47 @@ func NewConnect(i MemStorager, c Configurer) *Connect {
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
 func (c *Connect) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
+	var err error
+	var body string
 	// проверяем на content-type
 	if strings.Contains(request.Header.Get("Content-Type"), "text/plain") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
-		var body string
 		// если прошли то присваиваем значение content-type: "text/plain" и статус 201
 		responce.Header().Add("Content-Type", "text/plain")
-		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
-		url, err := io.ReadAll(request.Body)
+		var url []byte
+		url, err = io.ReadAll(request.Body)
 		if err != nil {
 			log.Fatal(err)
 			responce.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logger.Log.Debug("Body", zap.String("type json", string(url)))
+		logger.Log.Debug("Body", zap.String("request URL", string(url)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(url) > 0 {
-			body = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
+			body, err = c.Storage.CreateShortURL(string(url), c.Config.GetConfig().OuterAddress)
+			if err != nil {
+				responce.WriteHeader(http.StatusConflict)
+			}
+			logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
 			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
-			responce.Write([]byte(body))
 		}
+		responce.WriteHeader(http.StatusCreated)
+		responce.Write([]byte(body))
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
+}
+
+// Структура разбора batch json запроса
+type JsBatchRequest struct {
+	ID  string `json:"correlation_id"`
+	URL string `json:"original_url"`
+}
+
+// Структура разбора batch json ответа
+type JsBatchResponce struct {
+	ID      string `json:"correlation_id"`
+	SortURL string `json:"short_url"`
 }
 
 // Структура разбора json запроса
@@ -93,13 +114,15 @@ type JsResponce struct {
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
 func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	var err error
+	var body []byte
 	// проверяем на content-type
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		// если прошли то присваиваем значение content-type: "application/json" и статус 201
 		responce.Header().Add("Content-Type", "application/json")
-		responce.WriteHeader(http.StatusCreated)
 		// получаем тело запроса
-		js, err := io.ReadAll(request.Body)
+		var js []byte
+		js, err = io.ReadAll(request.Body)
 		if err != nil {
 			logger.Log.Error("Request wihtout body", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
@@ -109,21 +132,71 @@ func (c *Connect) ShortenJSONHandler(responce http.ResponseWriter, request *http
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
 		if len(js) > 0 {
 			var url JsRequest
-			if err := json.Unmarshal(js, &url); err != nil {
+			if err = json.Unmarshal(js, &url); err != nil {
 				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
 			}
 			if url.URL == "" {
+				responce.WriteHeader(http.StatusCreated)
 				return
 			}
-			extURL := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
-			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
+			extURL, err := c.Storage.CreateShortURL(url.URL, c.Config.GetConfig().OuterAddress)
+			if err != nil {
+				responce.WriteHeader(http.StatusConflict)
+			}
 			result := JsResponce{URL: extURL}
-			body, err := json.Marshal(result)
+			body, err = json.Marshal(result)
 			if err != nil {
 				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			}
-			responce.Write(body)
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
 		}
+		responce.WriteHeader(http.StatusCreated)
+		responce.Write(body)
+		return
+	}
+	responce.WriteHeader(http.StatusBadRequest)
+}
+
+// ShortenBatchJSONHandler - хандлер сокращения URL, юпринимает application/json, проверят Content-type, присваивает правильный Content-type ответу,
+// записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
+// и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request
+func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	var err error
+	var body []byte
+	// проверяем на content-type
+	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
+		// если прошли то присваиваем значение content-type: "application/json" и статус 201
+		responce.Header().Add("Content-Type", "application/json")
+		// получаем тело запроса
+		var js []byte
+		js, err = io.ReadAll(request.Body)
+		if err != nil {
+			logger.Log.Error("Request wihtout body", zap.Error(err))
+			responce.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		logger.Log.Debug("Body", zap.String("type json", string(js)))
+		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
+		// jjs := []byte(`[{"correlation_id": "1","original_url": "ya.ru"}]`)
+		if len(js) > 0 {
+			var urls []JsBatchRequest
+			var resulturls []JsBatchResponce
+			if err := json.Unmarshal(js, &urls); err != nil {
+				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
+			}
+			if len(urls) == 0 {
+				responce.WriteHeader(http.StatusCreated)
+				return
+			}
+			for _, e := range urls {
+				extURL, _ := c.Storage.CreateShortURL(e.URL, c.Config.GetConfig().OuterAddress)
+				resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: extURL})
+			}
+			body, _ = json.Marshal(resulturls)
+			c.Storage.SaveToFile(c.Config.GetConfig().FileStoragePath)
+		}
+		responce.WriteHeader(http.StatusCreated)
+		responce.Write(body)
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
@@ -139,6 +212,7 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 		}
 		responce.Header().Add("Location", outURL)
 		responce.WriteHeader(http.StatusTemporaryRedirect)
+		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
 }
@@ -166,7 +240,8 @@ func (c *Connect) RouterFunc() chi.Router {
 			r.Get("/", c.ExpandHandler) // GET запрос с id направляем на извлечение ссылки
 		})
 		r.Route("/api/shorten", func(r chi.Router) {
-			r.Post("/", c.ShortenJSONHandler) // POST запрос с JSON телом
+			r.Post("/", c.ShortenJSONHandler)           // POST запрос с JSON телом
+			r.Post("/batch", c.ShortenBatchJSONHandler) // POST запрос с JSON телом
 		})
 		r.Route("/ping", func(r chi.Router) {
 			r.Get("/", c.CheckDBHandler) // GET проверяет работоспособность базы данных
