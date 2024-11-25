@@ -21,6 +21,21 @@ type Storager interface {
 		ShortURL string
 		URL      string
 	}, error)
+	GetDB() (result struct {
+		links []struct {
+			InnerLink  string
+			OutterLink string
+			IDLink     int
+		}
+		users []struct {
+			id int
+			dt string
+		}
+		usersLinks []struct {
+			userid int
+			linkid int
+		}
+	}, err error)
 }
 
 // Структура для хранения ссылок

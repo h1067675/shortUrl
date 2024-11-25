@@ -227,8 +227,18 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
+	ctx := request.Context()
+
+	res, err := c.Storage.GetDB()
+	logger.Log.Debug("user", zap.Int("ID", ctx.Value(keyUserID).(int)))
+	if err != nil {
+		logger.Log.Debug("can't load data from DB")
+	} else {
+		fmt.Printf("%+v\n", res)
+	}
+
 	if request.Method == http.MethodGet {
-		ctx := request.Context()
+
 		if ctx.Value(keyNewUser) == true {
 			responce.WriteHeader(http.StatusUnauthorized)
 			return
@@ -238,7 +248,11 @@ func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *h
 			responce.WriteHeader(http.StatusNoContent)
 			return
 		}
-		body, _ := json.Marshal(urls)
+		body, err := json.Marshal(urls)
+		if err != nil {
+			logger.Log.Debug("can't serialized json answer")
+		}
+		responce.Header().Add("Content-Type", "application/json")
 		responce.WriteHeader(http.StatusOK)
 		responce.Write(body)
 		return

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/h1067675/shortUrl/cmd/storage"
 	"github.com/h1067675/shortUrl/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,8 +36,11 @@ type test struct {
 	want         want
 }
 type TestStorage struct {
+	storage.Storager
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
+	Users       map[int][]string
+	UsersLinks  map[string][]int
 	Test        test
 }
 

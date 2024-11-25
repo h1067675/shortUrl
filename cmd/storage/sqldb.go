@@ -146,8 +146,10 @@ func (s *Storage) getUserURLBD(id int) (result []struct {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
+	defer func() {
+		_ = rows.Close()
+		_ = rows.Err()
+	}()
 	for rows.Next() {
 		var in string
 		var out string
@@ -177,4 +179,92 @@ func (s *Storage) getNewUserIDDB() (result int, err error) {
 		return -1, err
 	}
 	return result, nil
+}
+
+func (s *Storage) GetDB() (result struct {
+	links []struct {
+		InnerLink  string
+		OutterLink string
+		IDLink     int
+	}
+	users []struct {
+		id int
+		dt string
+	}
+	usersLinks []struct {
+		userid int
+		linkid int
+	}
+}, err error) {
+	var rows *sql.Rows
+	rows, err = s.DB.Query("SELECT InnerLink, OutterLink, Id FROM links;")
+	if err != nil {
+		return result, err
+	}
+	defer func() {
+		_ = rows.Close()
+		_ = rows.Err()
+	}()
+	for rows.Next() {
+		var in string
+		var out string
+		var idlink int
+		err = rows.Scan(&in, &out, &idlink)
+		if err != nil {
+			return result, err
+		}
+		result.links = append(result.links, struct {
+			InnerLink  string
+			OutterLink string
+			IDLink     int
+		}{InnerLink: in,
+			OutterLink: out,
+			IDLink:     idlink,
+		})
+	}
+	rows, err = s.DB.Query("SELECT Id, creation FROM users;")
+	if err != nil {
+		return result, err
+	}
+	defer func() {
+		_ = rows.Close()
+		_ = rows.Err()
+	}()
+	for rows.Next() {
+		var id int
+		var cr string
+		err = rows.Scan(&id, &cr)
+		if err != nil {
+			return result, err
+		}
+		result.users = append(result.users, struct {
+			id int
+			dt string
+		}{id: id,
+			dt: cr,
+		})
+	}
+	rows, err = s.DB.Query("SELECT Id, LinkID FROM users_links;")
+	if err != nil {
+		return result, err
+	}
+	defer func() {
+		_ = rows.Close()
+		_ = rows.Err()
+	}()
+	for rows.Next() {
+		var id int
+		var linkid int
+		err = rows.Scan(&id, &linkid)
+		if err != nil {
+			return result, err
+		}
+		result.usersLinks = append(result.usersLinks, struct {
+			userid int
+			linkid int
+		}{userid: id,
+			linkid: linkid,
+		})
+	}
+	return result, err
 }
