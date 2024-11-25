@@ -6,19 +6,36 @@ import (
 	"errors"
 	"math/rand"
 	"os"
+
+	"github.com/h1067675/shortUrl/internal/logger"
+	"go.uber.org/zap"
 )
 
-// Структура для лхранения ссылок
+type Storager interface {
+	CreateShortURL(url string, adr string) (string, error)
+	GetURL(url string) (l string, e error)
+	SaveToFile(file string)
+	PingDB() bool
+}
+
+// Структура для хранения ссылок
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
+	DB          *SQLDB
 }
 
 // Функция создает новое хранилище
-func NewStorage() *Storage {
+func NewStorage(database string) *Storage {
 	var r = Storage{
 		InnerLinks:  map[string]string{},
 		OutterLinks: map[string]string{},
+		DB:          newDB(database),
+	}
+	if !r.checkDBTable() {
+		if !r.createDBTable() {
+			r.DB.Connected = false
+		}
 	}
 	return &r
 }
@@ -28,6 +45,8 @@ type StorageJSON struct {
 	ShortLink    string `json:"short_url"`
 	OriginalLink string `json:"original_url"`
 }
+
+var ErrLinkExsist = errors.New("link already exsist")
 
 // Функция генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление
 func randChar() int {
@@ -56,23 +75,36 @@ func (s *Storage) createShortCode(adr string) string {
 
 // Функция получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
 // если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку
-func (s *Storage) CreateShortURL(url string, adr string) string {
-	val, ok := s.OutterLinks[url]
-	if ok {
-		return val
+func (s *Storage) CreateShortURL(url string, adr string) (result string, err error) {
+	logger.Log.Debug("DB connection", zap.Bool("is", s.DB.Connected))
+	if s.DB.Connected {
+		result, err = s.saveShortURLBD(url, adr)
+	} else {
+		result, ok := s.OutterLinks[url]
+		if ok {
+			return result, ErrLinkExsist
+		}
+		result = s.createShortCode(adr)
+		s.OutterLinks[url] = result
+		s.InnerLinks[result] = url
+		return result, err
 	}
-	result := s.createShortCode(adr)
-	s.OutterLinks[url] = result
-	s.InnerLinks[result] = url
-	return result
+	return
 }
 
 // Функция получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
 // если нет, то возвращает ошибку
 func (s *Storage) GetURL(url string) (l string, e error) {
-	l, ok := s.InnerLinks[url]
-	if ok {
-		return l, nil
+	if s.DB.Connected {
+		l = s.getURLBD(url)
+		if l != "" {
+			return l, nil
+		}
+	} else {
+		l, ok := s.InnerLinks[url]
+		if ok {
+			return l, nil
+		}
 	}
 	return "", errors.New("link not found")
 }
@@ -93,6 +125,7 @@ func (s *Storage) SaveToFile(file string) {
 	}
 	defer fl.Close()
 	fl.Write(tf)
+	logger.Log.Debug("Saved to ", zap.String("file", file))
 }
 
 // Функция восстановления ссылок из файла
@@ -109,11 +142,14 @@ func (s *Storage) RestoreFromfile(file string) {
 	r := bufio.NewScanner(fl)
 	r.Scan()
 	bt := r.Bytes()
-	if err := json.Unmarshal(bt, &st); err != nil {
-		panic(err)
+	if len(bt) > 0 {
+		if err := json.Unmarshal(bt, &st); err != nil {
+			panic(err)
+		}
+		for _, e := range st {
+			s.OutterLinks[e.OriginalLink] = e.ShortLink
+			s.InnerLinks[e.ShortLink] = e.OriginalLink
+		}
 	}
-	for _, e := range st {
-		s.OutterLinks[e.OriginalLink] = e.ShortLink
-		s.InnerLinks[e.ShortLink] = e.OriginalLink
-	}
+
 }
