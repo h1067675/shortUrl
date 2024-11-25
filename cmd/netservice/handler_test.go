@@ -39,7 +39,7 @@ type TestStorage struct {
 	Test        test
 }
 
-func (s *TestStorage) CreateShortURL(url string, adr string) (string, error) {
+func (s *TestStorage) CreateShortURL(url string, adr string, userid int) (string, error) {
 	val, ok := s.OutterLinks[url]
 	if ok {
 		return val, nil
@@ -64,6 +64,15 @@ func (s *TestStorage) SaveToFile(file string) {
 }
 func (s *TestStorage) PingDB() bool {
 	return false
+}
+func (s *TestStorage) GetNewUserID() (int, error) {
+	return 1, nil
+}
+func (s *TestStorage) GetUserURLS(id int) (result []struct {
+	ShortURL string
+	URL      string
+}, err error) {
+	return nil, nil
 }
 
 type NetAddressServer struct {
