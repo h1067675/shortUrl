@@ -11,6 +11,13 @@ import (
 	"go.uber.org/zap"
 )
 
+type Storager interface {
+	CreateShortURL(url string, adr string) (string, error)
+	GetURL(url string) (l string, e error)
+	SaveToFile(file string)
+	PingDB() bool
+}
+
 // Структура для хранения ссылок
 type Storage struct {
 	InnerLinks  map[string]string
@@ -39,6 +46,8 @@ type StorageJSON struct {
 	OriginalLink string `json:"original_url"`
 }
 
+var ErrLinkExsist = errors.New("link already exsist")
+
 // Функция генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление
 func randChar() int {
 	min, max := 48, 122
@@ -66,21 +75,21 @@ func (s *Storage) createShortCode(adr string) string {
 
 // Функция получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
 // если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку
-func (s *Storage) CreateShortURL(url string, adr string) string {
-	var result string
+func (s *Storage) CreateShortURL(url string, adr string) (result string, err error) {
 	logger.Log.Debug("DB connection", zap.Bool("is", s.DB.Connected))
 	if s.DB.Connected {
-		result = s.saveShortURLBD(url, adr)
+		result, err = s.saveShortURLBD(url, adr)
 	} else {
-		val, ok := s.OutterLinks[url]
+		result, ok := s.OutterLinks[url]
 		if ok {
-			return val
+			return result, ErrLinkExsist
 		}
 		result = s.createShortCode(adr)
 		s.OutterLinks[url] = result
 		s.InnerLinks[result] = url
+		return result, err
 	}
-	return result
+	return
 }
 
 // Функция получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
