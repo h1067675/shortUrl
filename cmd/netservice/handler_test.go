@@ -74,8 +74,8 @@ func (s *TestStorage) GetNewUserID() (int, error) {
 	return 1, nil
 }
 func (s *TestStorage) GetUserURLS(id int) (result []struct {
-	ShortURL string
-	URL      string
+	ShortURL    string
+	OriginalURL string
 }, err error) {
 	return nil, nil
 }
