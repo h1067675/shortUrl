@@ -18,8 +18,8 @@ type Storager interface {
 	PingDB() bool
 	GetNewUserID() (int, error)
 	GetUserURLS(int) ([]struct {
-		ShortURL    string
-		OriginalURL string
+		ShortURL string
+		URL      string
 	}, error)
 	GetDB() (result struct {
 		links []struct {
@@ -173,19 +173,19 @@ func (s *Storage) GetURL(url string) (l string, e error) {
 }
 
 func (s *Storage) GetUserURLS(id int) (result []struct {
-	ShortURL    string
-	OriginalURL string
+	ShortURL string
+	URL      string
 }, err error) {
 	if s.DB.Connected {
 		result, _ = s.getUserURLBD(id)
 	} else {
 		for _, e := range s.Users[id] {
 			result = append(result, struct {
-				ShortURL    string
-				OriginalURL string
+				ShortURL string
+				URL      string
 			}{
-				ShortURL:    e,
-				OriginalURL: s.OutterLinks[e],
+				ShortURL: e,
+				URL:      s.OutterLinks[e],
 			})
 		}
 	}

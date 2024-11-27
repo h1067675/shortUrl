@@ -114,8 +114,8 @@ type JsResponce struct {
 
 // Структура разбора json ответа с перечнем сокращенных ссылков
 type JsUserRequest struct {
-	ShortURL string `json:"short_url"`
-	URL      string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 // ShortenJSONHandler - хандлер сокращения URL, юпринимает application/json, проверят Content-type, присваивает правильный Content-type ответу,
@@ -227,6 +227,7 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
+	var urls []JsUserRequest
 	ctx := request.Context()
 
 	res, err := c.Storage.GetDB()
@@ -243,7 +244,10 @@ func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *h
 			responce.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		urls, _ := c.Storage.GetUserURLS(ctx.Value(keyUserID).(int))
+		urlsr, _ := c.Storage.GetUserURLS(ctx.Value(keyUserID).(int))
+		for _, e := range urlsr {
+			urls = append(urls, JsUserRequest{ShortURL: e.ShortURL, OriginalURL: e.URL})
+		}
 		if len(urls) == 0 {
 			responce.WriteHeader(http.StatusNoContent)
 			return

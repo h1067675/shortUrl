@@ -141,8 +141,8 @@ func (s *Storage) getURLBD(url string) string {
 
 // Функция получения внешнего URL по короткому URL из базы данных
 func (s *Storage) getUserURLBD(id int) (result []struct {
-	ShortURL    string
-	OriginalURL string
+	ShortURL string
+	URL      string
 }, err error) {
 	rows, err := s.DB.Query("SELECT InnerLink, OutterLink FROM links WHERE Id IN (SELECT LinkId FROM users_links WHERE Id = $1);", id)
 	if err != nil {
@@ -160,11 +160,11 @@ func (s *Storage) getUserURLBD(id int) (result []struct {
 			return nil, err
 		}
 		result = append(result, struct {
-			ShortURL    string
-			OriginalURL string
+			ShortURL string
+			URL      string
 		}{
-			ShortURL:    in,
-			OriginalURL: out,
+			ShortURL: in,
+			URL:      out,
 		})
 	}
 	return result, err
