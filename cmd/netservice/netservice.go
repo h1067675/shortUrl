@@ -273,13 +273,22 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		var (
 			err    error
 			userid int
-			cookie *http.Cookie
-			ctx    context.Context
+			//cookie *http.Cookie
+			ctx context.Context
 		)
 		logger.Log.Debug("checking authorization")
-		cookies := request.Cookies()
-		cookie, err = request.Cookie("token")
-		if err != nil && cookies != nil {
+		// cookies := request.Cookies()
+		// fmt.Print(cookies)
+		// cookie, err = request.Cookie("token")
+		// if err != nil {
+		if strings.Contains(request.Header.Get("Cookie"), "token") {
+			f := strings.Split(request.Header.Get("Cookie"), "=")
+			logger.Log.Debug("user cookie", zap.String("cookie", f[1]))
+			userid, err = authorization.CheckToken(f[1])
+			if err == nil {
+				ctx = context.WithValue(request.Context(), keyUserID, userid)
+			}
+		} else {
 			userid, err := c.Storage.GetNewUserID()
 			if err != nil {
 				logger.Log.Error("don't can to get new user ID", zap.Error(err))
@@ -296,12 +305,6 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 			http.SetCookie(response, cookie)
 			ctx = context.WithValue(request.Context(), keyUserID, userid)
 			ctx = context.WithValue(ctx, keyNewUser, true)
-		} else {
-			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
-			userid, err = authorization.CheckToken(cookie.Value)
-			if err == nil {
-				ctx = context.WithValue(request.Context(), keyUserID, userid)
-			}
 		}
 		next.ServeHTTP(response, request.WithContext(ctx))
 	})
