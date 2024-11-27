@@ -278,13 +278,7 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		)
 		logger.Log.Debug("checking authorization")
 		cookie, err = request.Cookie("token")
-		if err == nil {
-			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
-			userid, err = authorization.CheckToken(cookie.Value)
-			if err == nil {
-				ctx = context.WithValue(request.Context(), keyUserID, userid)
-			}
-		} else {
+		if err != nil {
 			userid, err := c.Storage.GetNewUserID()
 			if err != nil {
 				logger.Log.Error("don't can to get new user ID", zap.Error(err))
@@ -301,6 +295,12 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 			http.SetCookie(response, cookie)
 			ctx = context.WithValue(request.Context(), keyUserID, userid)
 			ctx = context.WithValue(ctx, keyNewUser, true)
+		} else {
+			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
+			userid, err = authorization.CheckToken(cookie.Value)
+			if err == nil {
+				ctx = context.WithValue(request.Context(), keyUserID, userid)
+			}
 		}
 		next.ServeHTTP(response, request.WithContext(ctx))
 	})
