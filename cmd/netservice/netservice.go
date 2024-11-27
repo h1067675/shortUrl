@@ -278,9 +278,8 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		)
 		logger.Log.Debug("checking authorization")
 		cookies := request.Cookies()
-		fmt.Print(cookies)
 		cookie, err = request.Cookie("token")
-		if err != nil {
+		if err != nil && cookies != nil {
 			userid, err := c.Storage.GetNewUserID()
 			if err != nil {
 				logger.Log.Error("don't can to get new user ID", zap.Error(err))
