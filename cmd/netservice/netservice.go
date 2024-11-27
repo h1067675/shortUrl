@@ -277,12 +277,13 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 			ctx    context.Context
 		)
 		cookie, err = request.Cookie("token")
-		logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
 		if err == nil {
 			userid, err = authorization.CheckToken(cookie.Value)
 			if err == nil {
 				ctx = context.WithValue(request.Context(), keyUserID, userid)
 			}
+		} else {
+			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
 		}
 		if err != nil {
 
