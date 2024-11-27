@@ -17,6 +17,8 @@ const SecretKEY = "supersecretkey"
 
 func CheckToken(tokenString string) (int, error) {
 	// заадавем утверждения Claims
+	logger.Log.Debug("token", zap.String("token", tokenString))
+
 	var cl = Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, &cl, func(t *jwt.Token) (interface{}, error) {
 		return []byte(SecretKEY), nil
