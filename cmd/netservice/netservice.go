@@ -114,8 +114,8 @@ type JsResponce struct {
 
 // Структура разбора json ответа с перечнем сокращенных ссылков
 type JsUserRequest struct {
-	ShortURL    string `json:"ShortURL"`
-	OriginalURL string `json:"OriginalURL"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 // ShortenJSONHandler - хандлер сокращения URL, юпринимает application/json, проверят Content-type, присваивает правильный Content-type ответу,
