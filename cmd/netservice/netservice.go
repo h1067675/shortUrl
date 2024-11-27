@@ -276,6 +276,7 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 			cookie *http.Cookie
 			ctx    context.Context
 		)
+		logger.Log.Debug("checking authorization")
 		cookie, err = request.Cookie("token")
 		if err == nil {
 			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))

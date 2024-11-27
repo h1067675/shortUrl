@@ -23,6 +23,7 @@ func CheckToken(tokenString string) (int, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &cl, func(t *jwt.Token) (interface{}, error) {
 		return []byte(SecretKEY), nil
 	})
+	logger.Log.Debug("token", zap.String("token", tokenString))
 	if err != nil {
 		return -1, err
 	}
