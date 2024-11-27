@@ -278,13 +278,12 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		)
 		cookie, err = request.Cookie("token")
 		if err == nil {
+			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
 			userid, err = authorization.CheckToken(cookie.Value)
 			if err == nil {
 				ctx = context.WithValue(request.Context(), keyUserID, userid)
 			}
-		}
-		if err != nil {
-
+		} else {
 			userid, err := c.Storage.GetNewUserID()
 			if err != nil {
 				logger.Log.Error("don't can to get new user ID", zap.Error(err))
