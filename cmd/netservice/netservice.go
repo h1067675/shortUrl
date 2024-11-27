@@ -114,8 +114,8 @@ type JsResponce struct {
 
 // Структура разбора json ответа с перечнем сокращенных ссылков
 type JsUserRequest struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"ShortURL"`
+	OriginalURL string `json:"OriginalURL"`
 }
 
 // ShortenJSONHandler - хандлер сокращения URL, юпринимает application/json, проверят Content-type, присваивает правильный Content-type ответу,
@@ -284,12 +284,12 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		logger.Log.Debug("checking authorization")
 		cookie, err = request.Cookie("token")
 		if err != nil {
-			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
 			userid, err = authorization.CheckToken(cookie.Value)
 			if err == nil {
 				ctx = context.WithValue(request.Context(), keyUserID, userid)
 			}
 		} else {
+			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
 			userid, err := c.Storage.GetNewUserID()
 			if err != nil {
 				logger.Log.Error("don't can to get new user ID", zap.Error(err))
