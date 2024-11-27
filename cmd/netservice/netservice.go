@@ -282,8 +282,6 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 			if err == nil {
 				ctx = context.WithValue(request.Context(), keyUserID, userid)
 			}
-		} else {
-			logger.Log.Debug("user cookie", zap.String("cookie", cookie.Value))
 		}
 		if err != nil {
 
