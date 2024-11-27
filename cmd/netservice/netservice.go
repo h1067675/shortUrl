@@ -255,6 +255,7 @@ func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *h
 		responce.Header().Add("Content-Type", "application/json")
 		responce.WriteHeader(http.StatusOK)
 		responce.Write(body)
+		logger.Log.Debug("take body to user urls", zap.String("body", string(body)))
 		return
 	}
 	responce.WriteHeader(http.StatusBadRequest)
