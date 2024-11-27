@@ -124,7 +124,7 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 	if err != nil {
 		return "", err
 	}
-	logger.Log.Debug("link added to user", zap.Int("id", userid))
+	logger.Log.Debug("link added to user", zap.Int("id", userid), zap.String("originurl", url), zap.String("shorturl", result), zap.Int("shorturl", linkid))
 	return result, errexit
 }
 
