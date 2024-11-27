@@ -282,6 +282,7 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 		// cookie, err = request.Cookie("token")
 		// if err != nil {
 		if strings.Contains(request.Header.Get("Cookie"), "token") {
+			logger.Log.Debug("cookie", zap.String("cookie", request.Header.Get("Cookie")))
 			f := strings.Split(request.Header.Get("Cookie"), "=")
 			logger.Log.Debug("user cookie", zap.String("cookie", f[1]))
 			userid, err = authorization.CheckToken(f[1])
