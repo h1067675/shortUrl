@@ -54,7 +54,7 @@ func (s *TestStorage) CreateShortURL(url string, adr string, userid int) (string
 	s.InnerLinks[result] = url
 	return result, nil
 }
-func (s *TestStorage) GetURL(url string) (l string, e error) {
+func (s *TestStorage) GetURL(url string, userid int) (l string, e error) {
 	l, ok := s.InnerLinks[url]
 	if ok {
 		return l, nil
