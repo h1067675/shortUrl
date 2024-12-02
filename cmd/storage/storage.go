@@ -13,7 +13,7 @@ import (
 
 type Storager interface {
 	CreateShortURL(url string, adr string, useris int) (string, error)
-	GetURL(url string) (l string, e error)
+	GetURL(url string, userid int) (l string, e error)
 	SaveToFile(file string)
 	PingDB() bool
 	GetNewUserID() (int, error)
@@ -36,6 +36,7 @@ type Storager interface {
 			linkid int
 		}
 	}, err error)
+	DeleteUserURLS(DeleteUserURLS) error
 }
 
 // Структура для хранения ссылок
@@ -47,6 +48,11 @@ type Storage struct {
 	DB          *SQLDB
 }
 
+type DeleteUserURLS struct {
+	UserID   int
+	LinksIDS []string
+}
+
 // Функция создает новое хранилище
 func NewStorage(database string) *Storage {
 	var r = Storage{
@@ -56,7 +62,7 @@ func NewStorage(database string) *Storage {
 		UsersLinks:  map[string][]int{},
 		DB:          newDB(database),
 	}
-	// r.DB.Exec("DROP TABLE links;")
+	//r.DB.Exec("DROP TABLE links;")
 	// r.DB.Exec("DROP TABLE users;")
 	// r.DB.Exec("DROP TABLE users_links;")
 	if !r.checkLinksDBTable() {
@@ -80,6 +86,7 @@ type StorageJSON struct {
 }
 
 var ErrLinkExsist = errors.New("link already exsist")
+var ErrLinkDeleted = errors.New("link is deleted")
 
 // Функция генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление
 func randChar() int {
@@ -157,9 +164,12 @@ func (s *Storage) GetNewUserID() (result int, err error) {
 
 // Функция получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
 // если нет, то возвращает ошибку
-func (s *Storage) GetURL(url string) (l string, e error) {
+func (s *Storage) GetURL(url string, userid int) (l string, e error) {
 	if s.DB.Connected {
-		l = s.getURLBD(url)
+		l, e = s.getURLBD(url, userid)
+		if e != nil {
+			return l, e
+		}
 		if l != "" {
 			return l, nil
 		}
@@ -193,6 +203,20 @@ func (s *Storage) GetUserURLS(id int) (result []struct {
 		return result, nil
 	}
 	return nil, errors.New("links not found")
+}
+
+func (s *Storage) DeleteUserURLS(ids DeleteUserURLS) (err error) {
+	chDone := make(chan struct{})
+	defer close(chDone)
+	inputCh := s.generator(chDone, ids)
+
+	channels := s.fanOut(chDone, inputCh)
+
+	collectResultCh := s.fanIn(chDone, channels...)
+
+	s.deleteFromDB(collectResultCh)
+
+	return errors.New("error of delete URLS")
 }
 
 // Функция сохранения хранилища в файл

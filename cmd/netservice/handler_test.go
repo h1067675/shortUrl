@@ -54,7 +54,7 @@ func (s *TestStorage) CreateShortURL(url string, adr string, userid int) (string
 	s.InnerLinks[result] = url
 	return result, nil
 }
-func (s *TestStorage) GetURL(url string) (l string, e error) {
+func (s *TestStorage) GetURL(url string, userid int) (l string, e error) {
 	l, ok := s.InnerLinks[url]
 	if ok {
 		return l, nil
@@ -395,7 +395,7 @@ func Test_expand(t *testing.T) {
 			require.NoError(t, err)
 			request2.Header.Add("Content-Type", test.contentType)
 			w2 := httptest.NewRecorder()
-			h2.ServeHTTP(w2, request2)
+			h2.ServeHTTP(w2, request2.WithContext(ctx))
 			resp2 := w2.Result()
 			defer resp2.Body.Close()
 			// проверяем код ответа
