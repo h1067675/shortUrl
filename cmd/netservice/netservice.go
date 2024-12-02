@@ -295,7 +295,7 @@ func (c *Connect) DeleteUserURLSHandler(responce http.ResponseWriter, request *h
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
-// CheckDBHandler -
+// CheckDBHandler - проверяет наличие базы данных
 func (c *Connect) CheckDBHandler(responce http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet && c.Storage.PingDB() {
 		responce.WriteHeader(http.StatusOK)
