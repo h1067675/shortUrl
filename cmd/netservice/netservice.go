@@ -360,8 +360,8 @@ func (c *Connect) RouterFunc() chi.Router {
 			r.Post("/batch", c.ShortenBatchJSONHandler) // POST запрос с множественным JSON телом
 		})
 		r.Route("/api/user", func(r chi.Router) {
-			r.Get("/urls", c.ExpandUserURLSHandler)   // GET запрос на выдачу всех сокращенных ссылок пользователем
-			r.Patch("/urls", c.DeleteUserURLSHandler) // DELETE запрос удаляет ссылки перечисленные в запросе
+			r.Get("/urls", c.ExpandUserURLSHandler)    // GET запрос на выдачу всех сокращенных ссылок пользователем
+			r.Delete("/urls", c.DeleteUserURLSHandler) // DELETE запрос удаляет ссылки перечисленные в запросе
 		})
 		r.Route("/ping", func(r chi.Router) {
 			r.Get("/", c.CheckDBHandler) // GET запрос проверяет работоспособность базы данных
