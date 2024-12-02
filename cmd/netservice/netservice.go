@@ -216,6 +216,7 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 		ctx := request.Context()
 		outURL, err := c.Storage.GetURL("http://"+c.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
 		if err == storage.ErrLinkDeleted {
+			logger.Log.Error("URL has been deleted", zap.Error(err))
 			responce.WriteHeader(http.StatusGone)
 		} else if err != nil {
 			logger.Log.Error("Can't to get URL", zap.Error(err))
