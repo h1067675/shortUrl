@@ -213,11 +213,8 @@ func (c *Connect) ShortenBatchJSONHandler(responce http.ResponseWriter, request 
 // expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
 func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
-		ctx := request.Context()
-		outURL, err := c.Storage.GetURL("http://"+c.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
-		if err == storage.ErrLinkDeleted {
-			responce.WriteHeader(http.StatusGone)
-		} else if err != nil {
+		outURL, err := c.Storage.GetURL("http://" + c.Config.GetConfig().ServerAddress + request.URL.Path)
+		if err != nil {
 			logger.Log.Error("Can't to get URL", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 		}
@@ -264,32 +261,6 @@ func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *h
 		responce.Write(body)
 		logger.Log.Debug("take body to user urls", zap.String("body", string(body)))
 		return
-	}
-	responce.WriteHeader(http.StatusBadRequest)
-}
-
-// expandHundler - хандлер получения адреса по короткой ссылке. Получаем короткую ссылку из GET запроса
-func (c *Connect) DeleteUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
-	var err error
-	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
-		var js []byte
-		js, err = io.ReadAll(request.Body)
-		if err != nil {
-			logger.Log.Error("Request wihtout body", zap.Error(err))
-			responce.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		logger.Log.Debug("Body", zap.String("type json", string(js)))
-		if len(js) > 0 {
-			var ids storage.DeleteUserURLS
-			ctx := request.Context()
-			ids.UserID = ctx.Value(keyUserID).(int)
-			if err := json.Unmarshal(js, &ids.LinksIDS); err != nil {
-				logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
-			}
-			c.Storage.DeleteUserURLS(ids)
-			responce.WriteHeader(http.StatusAccepted)
-		}
 	}
 	responce.WriteHeader(http.StatusBadRequest)
 }
@@ -357,14 +328,14 @@ func (c *Connect) RouterFunc() chi.Router {
 		})
 		r.Route("/api/shorten", func(r chi.Router) {
 			r.Post("/", c.ShortenJSONHandler)           // POST запрос с JSON телом
-			r.Post("/batch", c.ShortenBatchJSONHandler) // POST запрос с множественным JSON телом
+			r.Post("/batch", c.ShortenBatchJSONHandler) // POST запрос с JSON телом
 		})
 		r.Route("/api/user", func(r chi.Router) {
 			r.Get("/urls", c.ExpandUserURLSHandler)    // GET запрос на выдачу всех сокращенных ссылок пользователем
 			r.Delete("/urls", c.DeleteUserURLSHandler) // DELETE запрос удаляет ссылки перечисленные в запросе
 		})
 		r.Route("/ping", func(r chi.Router) {
-			r.Get("/", c.CheckDBHandler) // GET запрос проверяет работоспособность базы данных
+			r.Get("/", c.CheckDBHandler) // GET проверяет работоспособность базы данных
 		})
 	})
 	logger.Log.Debug("Server is running", zap.String("server address", c.Config.GetConfig().ServerAddress))
