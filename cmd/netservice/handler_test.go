@@ -395,7 +395,7 @@ func Test_expand(t *testing.T) {
 			require.NoError(t, err)
 			request2.Header.Add("Content-Type", test.contentType)
 			w2 := httptest.NewRecorder()
-			h2.ServeHTTP(w2, request2)
+			h2.ServeHTTP(w2, request2.WithContext(ctx))
 			resp2 := w2.Result()
 			defer resp2.Body.Close()
 			// проверяем код ответа
