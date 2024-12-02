@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgerrcode"
@@ -143,6 +144,10 @@ func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 	err = row.Scan(&del)
 	if del != nil {
 		return res, ErrLinkDeleted
+	}
+	if err != nil {
+		logger.Log.Debug("error on chekker to deleted with a query", zap.String("SELECT", fmt.Sprintf("SELECT deleted FROM users_links WHERE LinkId = %v AND Id = %v;", linkID, userid)))
+		return res, nil
 	}
 	return
 }
