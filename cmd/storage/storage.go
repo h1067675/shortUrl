@@ -40,6 +40,7 @@ type Storager interface {
 }
 
 // Структура для хранения ссылок
+
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
@@ -265,5 +266,4 @@ func (s *Storage) RestoreFromfile(file string) {
 			s.UsersLinks[e.ShortLink] = append(s.UsersLinks[e.ShortLink], e.UserID...)
 		}
 	}
-
 }

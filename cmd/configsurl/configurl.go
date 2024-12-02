@@ -31,7 +31,6 @@ type NetAddressServer struct {
 type FilePath struct {
 	Path string
 }
-
 // Структура описывающая формат адреса подключения к БД
 type DatabasePath struct {
 	Path string
@@ -135,13 +134,13 @@ func (n *DatabasePath) Set(s string) (err error) {
 func (n *DatabasePath) String() string {
 	return n.Path
 }
-
 // разбираем атрибуты командной строки
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
 	flag.Var(&c.FileStoragePath, "f", "File storage path")
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
+
 	flag.Parse()
 	fmt.Print(c.DatabaseDSN)
 }
