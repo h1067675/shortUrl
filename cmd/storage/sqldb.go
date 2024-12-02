@@ -143,6 +143,7 @@ func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 	var del *bool
 	err = row.Scan(&del)
 	if del != nil {
+		logger.Log.Debug("is_deleted is true")
 		return res, ErrLinkDeleted
 	}
 	if err != nil {
