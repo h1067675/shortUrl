@@ -94,7 +94,7 @@ func (s *Storage) createUsersDBTables() bool {
 	_, err = s.DB.Exec(`CREATE TABLE users_links (
 		Id INTEGER,
 		LinkID INTEGER,
-		Deleted BOOL
+		is_deleted BOOL
 		);`)
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
@@ -139,14 +139,14 @@ func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 		logger.Log.Debug("error on get link from DB")
 		return
 	}
-	row = s.DB.QueryRow("SELECT deleted FROM users_links WHERE LinkId = $1 AND Id = $2;", linkID, userid)
+	row = s.DB.QueryRow("SELECT is_deleted FROM users_links WHERE LinkId = $1 AND Id = $2;", linkID, userid)
 	var del *bool
 	err = row.Scan(&del)
 	if del != nil {
 		return res, ErrLinkDeleted
 	}
 	if err != nil {
-		logger.Log.Debug("error on chekker to deleted with a query", zap.String("SELECT", fmt.Sprintf("SELECT deleted FROM users_links WHERE LinkId = %v AND Id = %v;", linkID, userid)))
+		logger.Log.Debug("error on chekker to deleted with a query", zap.String("SELECT", fmt.Sprintf("SELECT is_deleted FROM users_links WHERE LinkId = %v AND Id = %v;", linkID, userid)))
 		return res, nil
 	}
 	return
@@ -221,7 +221,8 @@ func (s *Storage) deleteFromDB(chIn chan struct {
 	defer tx.Commit()
 	for ch := range chIn {
 		if ch.linkID > 0 {
-			_, err = tx.Exec("UPDATE users_links SET Deleted = TRUE WHERE Id = $1 AND LinkId = $2", ch.userID, ch.linkID)
+			_, err = tx.Exec("UPDATE users_links SET is_deleted = TRUE WHERE Id = $1 AND LinkId = $2", ch.userID, ch.linkID)
+			logger.Log.Debug("DB query ", zap.String("UPDATE", fmt.Sprintf("UPDATE users_links SET is_deleted = TRUE WHERE Id = %v AND LinkId = %v", ch.userID, ch.linkID)))
 			if err != nil {
 				// если ошибка, то откатываем изменения
 				tx.Rollback()
