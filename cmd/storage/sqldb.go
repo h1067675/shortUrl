@@ -135,12 +135,14 @@ func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 	var linkID int
 	err = row.Scan(&res, &linkID)
 	if err != nil {
+		logger.Log.Debug("error on get link from DB")
 		return
 	}
 	row = s.DB.QueryRow("SELECT deleted FROM users_links WHERE LinkId = $1 AND id = $2;", linkID, userid)
 	var del *bool
 	err = row.Scan(&del)
 	if err != nil {
+		logger.Log.Debug("error on chekker to deleted")
 		return
 	}
 	if del != nil {
