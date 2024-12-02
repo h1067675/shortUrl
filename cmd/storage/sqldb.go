@@ -92,8 +92,7 @@ func (s *Storage) createUsersDBTables() bool {
 	}
 	_, err = s.DB.Exec(`CREATE TABLE users_links (
 		Id INTEGER,
-		LinkID INTEGER,
-		Deleted BOOL
+		LinkID INTEGER
 		);`)
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
@@ -130,23 +129,14 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 }
 
 // Функция получения внешнего URL по короткому URL из базы данных
-func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
-	row := s.DB.QueryRow("SELECT OutterLink, Id FROM links WHERE InnerLink = $1;", url)
-	var linkID int
-	err = row.Scan(&res, &linkID)
+func (s *Storage) getURLBD(url string) string {
+	row := s.DB.QueryRow("SELECT OutterLink FROM links WHERE InnerLink = $1;", url)
+	var result string
+	err := row.Scan(&result)
 	if err != nil {
-		return
+		return ""
 	}
-	row = s.DB.QueryRow("SELECT deleted FROM users_links WHERE LinkId = $1 AND id = $2;", linkID, userid)
-	var del *bool
-	err = row.Scan(&del)
-	if err != nil {
-		return
-	}
-	if del != nil {
-		return res, ErrLinkDeleted
-	}
-	return
+	return result
 }
 
 // Функция получения внешнего URL по короткому URL из базы данных
@@ -180,20 +170,6 @@ func (s *Storage) getUserURLBD(id int) (result []struct {
 	return result, err
 }
 
-func (s Storage) getUserURLByShortLink(userID int, shortLink string) int {
-	if userID < 1 || shortLink == "" || len(shortLink) < 8 {
-		return -1
-	}
-	row := s.DB.QueryRow("SELECT linkid FROM users_links WHERE linkid IN (SELECT Id FROM links WHERE InnerLink LIKE '%' || $1) AND id = $2;", shortLink, userID)
-	var id int
-	err := row.Scan(&id)
-	if err != nil {
-		logger.Log.Debug("error of getting data from DB")
-		return -1
-	}
-	return id
-}
-
 func (s *Storage) getNewUserIDDB() (result int, err error) {
 	_, err = s.DB.Exec("INSERT INTO users (creation) VALUES (current_timestamp);")
 	if err != nil {
@@ -205,27 +181,6 @@ func (s *Storage) getNewUserIDDB() (result int, err error) {
 		return -1, err
 	}
 	return result, nil
-}
-
-func (s *Storage) deleteFromDB(chIn chan struct {
-	userID int
-	linkID int
-}) {
-	tx, err := s.DB.Begin()
-	if err != nil {
-		return
-	}
-	defer tx.Commit()
-	for ch := range chIn {
-		if ch.linkID > 0 {
-			_, err = tx.Exec("UPDATE users_links SET Deleted = TRUE WHERE Id = $1 AND LinkId = $2", ch.userID, ch.linkID)
-			if err != nil {
-				// если ошибка, то откатываем изменения
-				tx.Rollback()
-			}
-		}
-	}
-	tx.Commit()
 }
 
 func (s *Storage) GetDB() (result struct {
