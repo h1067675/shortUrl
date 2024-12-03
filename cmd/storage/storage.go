@@ -210,7 +210,7 @@ func (s *Storage) DeleteUserURLS(ids DeleteUserURLS) (err error) {
 	defer close(chDone)
 	inputCh := s.generator(chDone, ids)
 
-	channels := s.fanOut(chDone, inputCh)
+	channels := s.fanOut(chDone, inputCh, len(ids.LinksIDS))
 
 	collectResultCh := s.fanIn(chDone, channels...)
 

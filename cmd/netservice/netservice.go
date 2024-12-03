@@ -215,11 +215,13 @@ func (c *Connect) ExpandHandler(responce http.ResponseWriter, request *http.Requ
 	if request.Method == http.MethodGet {
 		ctx := request.Context()
 		outURL, err := c.Storage.GetURL("http://"+c.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
+		logger.Log.Debug("error from func", zap.Error(err))
 		if err == storage.ErrLinkDeleted {
-			logger.Log.Error("URL has been deleted", zap.Error(err))
+			logger.Log.Debug("URL has been deleted", zap.Error(err))
 			responce.WriteHeader(http.StatusGone)
+			return
 		} else if err != nil {
-			logger.Log.Error("Can't to get URL", zap.Error(err))
+			logger.Log.Debug("Can't to get URL", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 		}
 		responce.Header().Add("Location", outURL)
@@ -295,7 +297,7 @@ func (c *Connect) DeleteUserURLSHandler(responce http.ResponseWriter, request *h
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
-// CheckDBHandler -
+// CheckDBHandler - проверяет наличие базы данных
 func (c *Connect) CheckDBHandler(responce http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet && c.Storage.PingDB() {
 		responce.WriteHeader(http.StatusOK)
