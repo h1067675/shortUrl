@@ -31,11 +31,10 @@ func (s *Storage) generator(chDone chan struct{}, ids DeleteUserURLS) chan struc
 func (s *Storage) fanOut(chDone chan struct{}, chIn chan struct {
 	userID int
 	linkID string
-}) []chan struct {
+}, nWorkers int) []chan struct {
 	userID int
 	linkID int
 } {
-	nWorkers := 10
 
 	channels := make([]chan struct {
 		userID int
