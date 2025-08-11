@@ -1,4 +1,4 @@
-package netservice
+package main
 
 import (
 	"bytes"
@@ -402,6 +402,78 @@ func Test_expand(t *testing.T) {
 			assert.Equal(t, test.want.code, resp2.StatusCode)
 			// ппроверяем location
 			assert.Equal(t, test.want.location, resp2.Header.Get("Location"))
+		})
+	}
+}
+func Test_ShortenBatchJSONHandler(t *testing.T) {
+	tests := []test{{
+		name:        "test shorten #1",
+		method:      http.MethodPost,
+		contentType: "application/json",
+		body:        `[{"correlation_id":"1","original_url": "http://ya.ru/"},{"correlation_id":"2","original_url": "http://yandex.ru/"}]`,
+		want: want{
+			code:        201,
+			response:    `[{"correlation_id":"1","short_url": "*"},{"correlation_id":"2","short_url": "111"}]`,
+			contentType: "application/json",
+		},
+	},
+		{
+			name:        "test shorten #1",
+			method:      http.MethodPost,
+			contentType: "application/json",
+			body:        "{}",
+			want: want{
+				code:        201,
+				response:    "{}",
+				contentType: "application/json",
+			},
+		},
+		{
+			name:        "test shorten #1",
+			method:      http.MethodPost,
+			contentType: "application/json",
+			body:        "",
+			want: want{
+				code:        201,
+				response:    "",
+				contentType: "application/json",
+			},
+		},
+	}
+
+	logger.Initialize("debug")
+	var strg = TestStorage{
+		InnerLinks:  map[string]string{},
+		OutterLinks: map[string]string{},
+	}
+	var cnf = Cnfg{
+		NetAddressServerShortener: NetAddressServer{Host: "localhoxt", Port: 8080},
+		NetAddressServerExpand:    NetAddressServer{Host: "localhoxt", Port: 8080},
+	}
+	var r = NewConnect(&strg, &cnf)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			strg.Test = test
+			h := http.HandlerFunc(r.ShortenBatchJSONHandler)
+			buf := bytes.NewBuffer([]byte(test.body))
+			request, err := http.NewRequest(test.method, "/", buf)
+			require.NoError(t, err)
+			request.Header.Add("Content-Type", test.contentType)
+			// rctx := chi.NewRouteContext()
+			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
+			// rctx.URLParams.Add("name", "joe")
+			w := httptest.NewRecorder()
+
+			ctx := context.WithValue(request.Context(), keyUserID, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
+			resp := w.Result()
+			defer resp.Body.Close()
+			_, err = io.ReadAll(resp.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, test.want.code, resp.StatusCode)
+			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
+
 		})
 	}
 }
