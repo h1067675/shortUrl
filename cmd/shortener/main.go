@@ -35,9 +35,9 @@ func main() {
 	var conn = NewConnect(storage, conf)
 	// Запускаем сервер
 	go conn.StartServer()
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 	// создаём файл журнала профилирования памяти
-	fmem, err := os.Create(`./profiles/base.pprof`)
+	fmem, err := os.Create(`./profiles/result.pprof`)
 	if err != nil {
 		panic(err)
 	}
