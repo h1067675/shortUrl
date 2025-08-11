@@ -149,6 +149,7 @@ func (c *Connect) Authorization(next http.Handler) http.Handler {
 			}
 		} else {
 			userid, err := c.Storage.GetNewUserID()
+			logger.Log.Debug("new user", zap.Int("id", userid))
 			if err != nil {
 				logger.Log.Error("don't can to get new user ID", zap.Error(err))
 			}
