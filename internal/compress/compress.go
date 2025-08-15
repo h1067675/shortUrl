@@ -7,15 +7,18 @@ import (
 	"strings"
 )
 
+// compressWriter описывает структуру необходимую для сжатия данных.
 type compressWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
 }
 
+// Write реализует метод интерфейса
 func (w compressWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
+// CompressHandle промежуточный хэндлер отвечающий за сжатие данных
 func CompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {

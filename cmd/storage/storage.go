@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Storager описывает интерфейс хранения данных.
 type Storager interface {
 	CreateShortURL(url string, adr string, useris int) (string, error)
 	GetURL(url string, userid int) (l string, e error)
@@ -39,7 +40,7 @@ type Storager interface {
 	DeleteUserURLS(DeleteUserURLS) error
 }
 
-// Структура для хранения ссылок
+// Storage описывает структуру для хранения ссылок в переменной.
 type Storage struct {
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
@@ -53,7 +54,7 @@ type DeleteUserURLS struct {
 	LinksIDS []string
 }
 
-// Функция создает новое хранилище
+// NewStorage создает новое хранилище.
 func NewStorage(database string) *Storage {
 	var r = Storage{
 		InnerLinks:  map[string]string{},
@@ -78,7 +79,7 @@ func NewStorage(database string) *Storage {
 	return &r
 }
 
-// структура описывает формат json для хранения данных в файле
+// StorageJSON описывает формат json для хранения данных в файле.
 type StorageJSON struct {
 	ShortLink    string `json:"short_url"`
 	OriginalLink string `json:"original_url"`
@@ -88,7 +89,7 @@ type StorageJSON struct {
 var ErrLinkExsist = errors.New("link already exsist")
 var ErrLinkDeleted = errors.New("link is deleted")
 
-// Функция генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление
+// randChar генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление.
 func randChar() int {
 	min, max := 48, 122
 	res := rand.Intn(max-min) + min
@@ -98,8 +99,8 @@ func randChar() int {
 	return res
 }
 
-// Функция генерирует новую короткую ссылку и проверяет на совпадение в "базе данных" если такая
-// строка уже есть то делает рекурсию на саму себя пока не найдет уникальную ссылку
+// createShortCode генерирует новую короткую ссылку и проверяет на совпадение в "базе данных" если такая
+// строка уже есть то делает рекурсию на саму себя пока не найдет уникальную ссылку.
 func (s *Storage) createShortCode(adr string) string {
 	shortURL := []byte("http://" + adr + "/")
 	for i := 0; i < 8; i++ {
@@ -113,8 +114,8 @@ func (s *Storage) createShortCode(adr string) string {
 	return result
 }
 
-// Функция получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
-// если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку
+// CreateShortURL получает ссылку которую необходимо сократить и проверяет на наличие ее в "базе данных",
+// если  есть, то возвращает уже готовый короткий URL, если нет то запрашивает новую случайную коротную ссылку.
 func (s *Storage) CreateShortURL(url string, adr string, userid int) (result string, err error) {
 	logger.Log.Debug("DB connection", zap.Bool("is", s.DB.Connected))
 	if s.DB.Connected {
@@ -145,6 +146,7 @@ func (s *Storage) CreateShortURL(url string, adr string, userid int) (result str
 	return
 }
 
+// GetNewUserID запрашивает в базе данных новый индификатор пользователя.
 func (s *Storage) GetNewUserID() (result int, err error) {
 	if s.DB.Connected {
 		result, err = s.getNewUserIDDB()
@@ -162,8 +164,8 @@ func (s *Storage) GetNewUserID() (result int, err error) {
 	return result, nil
 }
 
-// Функция получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
-// если нет, то возвращает ошибку
+// GetURL получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
+// если нет, то возвращает ошибку.
 func (s *Storage) GetURL(url string, userid int) (l string, e error) {
 	if s.DB.Connected {
 		l, e = s.getURLBD(url, userid)
@@ -182,6 +184,7 @@ func (s *Storage) GetURL(url string, userid int) (l string, e error) {
 	return "", errors.New("link not found")
 }
 
+// GetUserURLS получает все ссылки определенного пользователя.
 func (s *Storage) GetUserURLS(id int) (result []struct {
 	ShortURL string
 	URL      string
@@ -205,6 +208,7 @@ func (s *Storage) GetUserURLS(id int) (result []struct {
 	return nil, errors.New("links not found")
 }
 
+// DeleteUserURLS удаляет все ссылки определенного пользователя.
 func (s *Storage) DeleteUserURLS(ids DeleteUserURLS) (err error) {
 	chDone := make(chan struct{})
 	defer close(chDone)
@@ -219,7 +223,7 @@ func (s *Storage) DeleteUserURLS(ids DeleteUserURLS) (err error) {
 	return errors.New("error of delete URLS")
 }
 
-// Функция сохранения хранилища в файл
+// SaveToFile сохраняет хранилище переменной в файл.
 func (s *Storage) SaveToFile(file string) {
 	st := []StorageJSON{}
 	for i, e := range s.InnerLinks {
@@ -238,7 +242,7 @@ func (s *Storage) SaveToFile(file string) {
 	logger.Log.Debug("Saved to ", zap.String("file", file))
 }
 
-// Функция восстановления ссылок из файла
+// RestoreFromfile восстанавливает сохраненные ссылки из файла в переменную.
 func (s *Storage) RestoreFromfile(file string) {
 	fl, err := os.Open(file)
 	if err != nil {

@@ -7,33 +7,37 @@ import (
 	"go.uber.org/zap"
 )
 
+// Log глобальная переменная отвечающая за логгер.
 var Log *zap.Logger
 
 type (
-	// берём структуру для хранения сведений об ответе
+	// responseData хранит сведений об ответе.
 	responseData struct {
 		status int
 		size   int
 	}
 
-	// добавляем реализацию http.ResponseWriter
+	// loggingResponseWriter реализуем http.ResponseWriter.
 	loggingResponseWriter struct {
 		http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
 		responseData        *responseData
 	}
 )
 
+// Write записывает размер ответа.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader  записывает код ответа.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
 
+// Initialize инициализирует логгер zap определяя настройки.
 func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -51,6 +55,7 @@ func Initialize(level string) error {
 	return nil
 }
 
+// RequestLogger промежуточный хандлер логгирующий информацию о запросе
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
