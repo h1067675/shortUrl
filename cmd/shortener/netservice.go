@@ -328,7 +328,7 @@ func (c *Connect) ExpandUserURLSHandler(responce http.ResponseWriter, request *h
 	if request.Method == http.MethodGet {
 
 		if ctx.Value(keyNewUser) == true {
-			responce.WriteHeader(http.StatusUnauthorized)
+			responce.WriteHeader(http.StatusNoContent)
 			return
 		}
 		urlsr, _ := c.Storage.GetUserURLS(ctx.Value(keyUserID).(int))

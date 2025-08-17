@@ -7,6 +7,10 @@
 package main
 
 import (
+	// "log"
+	// "net/http"
+	// _ "net/http/pprof" // подключаем пакет pprof
+
 	"github.com/h1067675/shortUrl/cmd/configsurl"
 	"github.com/h1067675/shortUrl/cmd/storage"
 	"github.com/h1067675/shortUrl/internal/logger"
@@ -14,6 +18,9 @@ import (
 
 // Start - загружает настройки и стартует сервер
 func main() {
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 	// Инициализируем логгер
 	logger.Initialize("debug")
 	// Устанавливаем настройки приложения по умолчанию
@@ -30,4 +37,16 @@ func main() {
 	var conn = NewConnect(storage, conf)
 	// Запускаем сервер
 	conn.StartServer()
+	// time.Sleep(10 * time.Second)
+
+	// // создаём файл журнала профилирования памяти
+	// fmem, err := os.Create(`base.pprof`)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer fmem.Close()
+	// runtime.GC() // получаем статистику по использованию памяти
+	// if err := pprof.WriteHeapProfile(fmem); err != nil {
+	// 	panic(err)
+	// }
 }
