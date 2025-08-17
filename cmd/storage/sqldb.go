@@ -15,11 +15,13 @@ import (
 	"github.com/h1067675/shortUrl/internal/logger"
 )
 
+// SQLDB описывает структуру подключения к базе данных.
 type SQLDB struct {
 	*sql.DB
 	Connected bool
 }
 
+// newDB создает подключение к базе данных.
 func newDB(DatabasePath string) *SQLDB {
 	r, err := sql.Open("pgx", DatabasePath)
 	if err != nil {
@@ -28,7 +30,7 @@ func newDB(DatabasePath string) *SQLDB {
 	return &SQLDB{DB: r, Connected: true}
 }
 
-// Функция проверяет соединение с базой данных
+// PingDB проверяет соединение с базой данных.
 func (s *Storage) PingDB() bool {
 	if s.DB.Connected {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -40,7 +42,7 @@ func (s *Storage) PingDB() bool {
 	return false
 }
 
-// Функция проверяет наличие таблицы в базе данных
+// checkLinksDBTable проверяет наличие таблицы в базе данных.
 func (s *Storage) checkLinksDBTable() bool {
 	rows, err := s.DB.Query("SELECT * FROM links LIMIT 1;")
 	if err != nil {
@@ -54,7 +56,7 @@ func (s *Storage) checkLinksDBTable() bool {
 	return true
 }
 
-// Функция проверяет наличие таблицы в базе данных
+// checkUsersDBTable проверяет наличие таблицы в базе данных.
 func (s *Storage) checkUsersDBTable() bool {
 	rows, err := s.DB.Query("SELECT * FROM users LIMIT 1;")
 	if err != nil {
@@ -68,7 +70,7 @@ func (s *Storage) checkUsersDBTable() bool {
 	return true
 }
 
-// Функция создает таблицу ссылок в базе данных
+// createLinksDBTable создает таблицу ссылок в базе данных.
 func (s *Storage) createLinksDBTable() bool {
 	_, err := s.DB.Exec(`CREATE TABLE links (
 		Id SERIAL PRIMARY KEY, 
@@ -81,7 +83,7 @@ func (s *Storage) createLinksDBTable() bool {
 	return err == nil
 }
 
-// Функция создает таблицы пользователей в базе данных
+// createUsersDBTables создает таблицы пользователей в базе данных.
 func (s *Storage) createUsersDBTables() bool {
 	var err error
 	_, err = s.DB.Exec(`CREATE TABLE users (
@@ -102,7 +104,7 @@ func (s *Storage) createUsersDBTables() bool {
 	return err == nil
 }
 
-// Функция создания короткого URL и сохранения его в базу данных
+// saveShortURLBD создает короткий URL и сохраняет его в базу данных.
 func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result string, errexit error) {
 	var linkid int
 	var err error
@@ -130,7 +132,7 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 	return result, errexit
 }
 
-// Функция получения внешнего URL по короткому URL из базы данных
+// getURLBD получает внешний URL по короткому URL из базы данных.
 func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 	row := s.DB.QueryRow("SELECT OutterLink, Id FROM links WHERE InnerLink = $1;", url)
 	var linkID int
@@ -153,7 +155,7 @@ func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 	return
 }
 
-// Функция получения внешнего URL по короткому URL из базы данных
+// getUserURLBD получает внешний URL по короткому URL из базы данных.
 func (s *Storage) getUserURLBD(id int) (result []struct {
 	ShortURL string
 	URL      string
@@ -184,6 +186,7 @@ func (s *Storage) getUserURLBD(id int) (result []struct {
 	return result, err
 }
 
+// getUserURLByShortLink получает все сокращенные сслыки пользователя.
 func (s Storage) getUserURLByShortLink(userID int, shortLink string) int {
 	if userID < 1 || shortLink == "" || len(shortLink) < 8 {
 		return -1
@@ -198,6 +201,7 @@ func (s Storage) getUserURLByShortLink(userID int, shortLink string) int {
 	return id
 }
 
+// getNewUserIDDB получает ID нового пользователя.
 func (s *Storage) getNewUserIDDB() (result int, err error) {
 	_, err = s.DB.Exec("INSERT INTO users (creation) VALUES (current_timestamp);")
 	if err != nil {
@@ -211,6 +215,7 @@ func (s *Storage) getNewUserIDDB() (result int, err error) {
 	return result, nil
 }
 
+// deleteFromDB удаляет ссылки пользователя из базы данных.
 func (s *Storage) deleteFromDB(chIn chan struct {
 	userID int
 	linkID int
@@ -233,6 +238,7 @@ func (s *Storage) deleteFromDB(chIn chan struct {
 	tx.Commit()
 }
 
+// GetDB получает все ссылки из базы данных для помещения их в map.
 func (s *Storage) GetDB() (result struct {
 	links []struct {
 		InnerLink  string

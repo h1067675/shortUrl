@@ -12,42 +12,44 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
-// Структура настроек сервера
-type Config struct {
-	NetAddressServerShortener NetAddressServer
-	NetAddressServerExpand    NetAddressServer
-	FileStoragePath           FilePath
-	DatabaseDSN               DatabasePath
-	EnvConf                   EnvConfig
-}
+type (
+	// Config определяет настройки сервера.
+	Config struct {
+		NetAddressServerShortener NetAddressServer
+		NetAddressServerExpand    NetAddressServer
+		FileStoragePath           FilePath
+		DatabaseDSN               DatabasePath
+		EnvConf                   EnvConfig
+	}
 
-// Структура описывающая формат сетевого адреса для получения переменной среды
-type NetAddressServer struct {
-	Host string
-	Port int
-}
+	// NetAddressServer описывает формат сетевого адреса для получения переменной среды.
+	NetAddressServer struct {
+		Host string
+		Port int
+	}
 
-// Структура описывающая формат пути к файлу сохранения для получения переменной среды
-type FilePath struct {
-	Path string
-}
+	// FilePath описывает формат пути к файлу сохранения для получения переменной среды.
+	FilePath struct {
+		Path string
+	}
 
-// Структура описывающая формат адреса подключения к БД
-type DatabasePath struct {
-	Path string
-}
+	// DatabasePath описывает формат адреса подключения к БД.
+	DatabasePath struct {
+		Path string
+	}
 
-// Структура описывающая название переменных среды
-type EnvConfig struct {
-	ServerShortener string `env:"SERVER_ADDRESS"`
-	ServerExpand    string `env:"BASE_URL"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-}
+	// EnvConfig описывает название переменных среды.
+	EnvConfig struct {
+		ServerShortener string `env:"SERVER_ADDRESS"`
+		ServerExpand    string `env:"BASE_URL"`
+		FileStoragePath string `env:"FILE_STORAGE_PATH"`
+		DatabaseDSN     string `env:"DATABASE_DSN"`
+	}
+)
 
-// функция создания конфига, получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
-// адреса по умолчанию: localhost:8080
-func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string) *Config {
+// NewConfig создает конфиг и получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
+// адреса по умолчанию: localhost:8080.
+func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) *Config {
 	var r = Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
 		NetAddressServerShortener: NetAddressServer{
 			// переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
@@ -64,11 +66,11 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 	r.NetAddressServerShortener.Set(netAddressServerShortener)
 	r.NetAddressServerExpand.Set(netAddressServerExpand)
 	r.FileStoragePath.Set(fileStoragePath)
-	r.DatabaseDSN.Set(fileStoragePath)
+	r.DatabaseDSN.Set(dbPath)
 	return &r
 }
 
-// функция проверяющая на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию
+// checkNetAddress проверяtn на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию.
 func checkNetAddress(s string, h string, p int) (host string, port int, e error) {
 	host, port = h, p
 	v := strings.Split(s, "://")
@@ -100,12 +102,12 @@ func checkNetAddress(s string, h string, p int) (host string, port int, e error)
 	return
 }
 
-// возвращаем адрес вида host:port
+// String возвращает адрес вида host:port.
 func (n *NetAddressServer) String() string {
 	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
 }
 
-// устанавливаем значения host и port в переменные
+// Set устанавливет значения host и port в переменные.
 func (n *NetAddressServer) Set(s string) (err error) {
 	n.Host, n.Port, err = checkNetAddress(s, n.Host, n.Port)
 	if err != nil {
@@ -114,29 +116,29 @@ func (n *NetAddressServer) Set(s string) (err error) {
 	return nil
 }
 
-// Сохраняет значение переменной среды
+// Set сохраняет значение переменной среды.
 func (n *FilePath) Set(s string) (err error) {
 	n.Path = s
 	return nil
 }
 
-// возвращаем путь файла
+// String возвращает путь файла.
 func (n *FilePath) String() string {
 	return n.Path
 }
 
-// Сохраняет значение переменной среды
+// Set cохраняет значение переменной среды,
 func (n *DatabasePath) Set(s string) (err error) {
 	n.Path = s
 	return nil
 }
 
-// возвращаем путь файла
+// String возвращает путь к базе данных.
 func (n *DatabasePath) String() string {
 	return n.Path
 }
 
-// разбираем атрибуты командной строки
+// ParseFlags разбирает атрибуты командной строки.
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
@@ -146,7 +148,7 @@ func (c *Config) ParseFlags() {
 	fmt.Print(c.DatabaseDSN)
 }
 
-// EnvConfigSet - забираем переменные окружения и если они установлены то указывам в конфиг из значения
+// EnvConfigSet забирает переменные окружения и если они установлены и сохраняет в конфиг.
 func (c *Config) EnvConfigSet() {
 	err := env.Parse(&c.EnvConf)
 	if err != nil {
@@ -167,13 +169,13 @@ func (c *Config) EnvConfigSet() {
 	}
 }
 
-// инициирует процесс установки настроек
+// Set инициирует процесс установки настроек.
 func (c *Config) Set() {
 	c.ParseFlags()
 	c.EnvConfigSet()
 }
 
-// Возвращает данные настроек в текстовом формате
+// GetConfig возвращает данные настроек в текстовом формате.
 func (c *Config) GetConfig() struct {
 	ServerAddress   string
 	OuterAddress    string
