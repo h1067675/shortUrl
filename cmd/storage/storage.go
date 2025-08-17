@@ -66,6 +66,10 @@ func NewStorage(database string) *Storage {
 	//r.DB.Exec("DROP TABLE links;")
 	// r.DB.Exec("DROP TABLE users;")
 	// r.DB.Exec("DROP TABLE users_links;")
+	if database == "" {
+		r.DB.Connected = false
+		return &r
+	}
 	if !r.checkLinksDBTable() {
 		if !r.createLinksDBTable() {
 			r.DB.Connected = false
