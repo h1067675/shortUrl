@@ -86,6 +86,7 @@ func (app *Application) StartServer() {
 // Authorization осуществляет авторизацию пользователя.
 func (app *Application) Authorization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		logger.Log.Debug("Handler Authorization")
 		var (
 			err    error
 			userid int
@@ -136,6 +137,7 @@ func (app *Application) CheckDBHandler(responce http.ResponseWriter, request *ht
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ShortenHandler")
 	var err error
 	var body string
 	// проверяем на content-type
@@ -172,6 +174,7 @@ func (app *Application) ShortenHandler(responce http.ResponseWriter, request *ht
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ShortenJSONHandler")
 	var err error
 	var body []byte
 	// проверяем на content-type
@@ -219,6 +222,7 @@ func (app *Application) ShortenJSONHandler(responce http.ResponseWriter, request
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenBatchJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ShortenBatchJSONHandler")
 	var err error
 	var body []byte
 	// проверяем на content-type
@@ -262,6 +266,7 @@ func (app *Application) ShortenBatchJSONHandler(responce http.ResponseWriter, re
 
 // ExpandHandler получет адрес по короткой ссылке из GET запроса.
 func (app *Application) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ExpandHandler")
 	if request.Method == http.MethodGet {
 		ctx := request.Context()
 		outURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
@@ -283,6 +288,7 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 
 // ExpandUserURLSHandler получает весь список сокращенных адресов пользователем прошедшив авторизацию.
 func (app *Application) ExpandUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ExpandUserURLSHandler")
 	var urls []JsUserRequest
 	ctx := request.Context()
 

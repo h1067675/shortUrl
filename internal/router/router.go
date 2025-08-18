@@ -41,6 +41,7 @@ func (r Router) RouterFunc(handlers Handler) chi.Router {
 	r.Router.Use(handlers.Authorization)
 	r.Router.Use(compress.CompressHandle)
 	r.Router.Use(logger.RequestLogger)
+
 	// Делаем маршрутизацию
 	r.Router.Route("/", func(r chi.Router) {
 		r.Post("/", handlers.ShortenHandler) // POST запрос отправляем на сокращение ссылки
