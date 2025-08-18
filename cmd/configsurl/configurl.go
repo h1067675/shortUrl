@@ -12,6 +12,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// структуры
 type (
 	// Config определяет настройки сервера.
 	Config struct {

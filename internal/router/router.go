@@ -8,6 +8,7 @@ import (
 	"github.com/h1067675/shortUrl/internal/logger"
 )
 
+// структуры
 type (
 	// Handler связывает с хэндлерами
 	Handler interface {

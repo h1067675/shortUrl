@@ -14,11 +14,13 @@ import (
 	"github.com/h1067675/shortUrl/internal/router"
 )
 
+// типы двнных запроса
 const (
 	JSONData = "application/json"
 	TextData = "text/plain"
 )
 
+// Client описывает структуру настроек сервера
 type Client struct {
 	NetAddressServer string
 	NetAddressExpand string
