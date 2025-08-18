@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -23,12 +22,6 @@ const (
 	keyUserID key = iota
 	keyNewUser
 )
-
-// ErrLinkExsist возвращает ошибку URL уже существует
-var ErrLinkExsist = errors.New("link already exsist")
-
-// ErrLinkDeleted возвращает ошибку URL удален
-var ErrLinkDeleted = errors.New("link is deleted")
 
 type (
 	key int
@@ -271,7 +264,7 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 		ctx := request.Context()
 		outURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
 		logger.Log.Debug("error from func", zap.Error(err))
-		if err == ErrLinkDeleted {
+		if err == storage.ErrLinkDeleted {
 			logger.Log.Debug("URL has been deleted", zap.Error(err))
 			responce.WriteHeader(http.StatusGone)
 			return
@@ -321,8 +314,8 @@ func (app *Application) ExpandUserURLSHandler(responce http.ResponseWriter, requ
 
 // DeleteUserURLSHandler удалет указанные в JSON сокращенные адреса пользователя прошедшего авторизацию.
 func (app *Application) DeleteUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
-	var err error
 	logger.Log.Debug("Handler DeleteUserURLSHandler")
+	var err error
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		var js []byte
 		js, err = io.ReadAll(request.Body)
@@ -344,6 +337,7 @@ func (app *Application) DeleteUserURLSHandler(responce http.ResponseWriter, requ
 			}
 			app.Storage.DeleteUserURLS(ids)
 			responce.WriteHeader(http.StatusAccepted)
+			return
 		}
 	}
 	responce.WriteHeader(http.StatusBadRequest)
