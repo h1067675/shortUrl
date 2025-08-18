@@ -56,7 +56,10 @@ type StorageJSON struct {
 	UserID       []int  `json:"user_id"`
 }
 
+// ErrLinkExsist ошибка ссылка уже существует
 var ErrLinkExsist = errors.New("link already exsist")
+
+// ErrLinkDeleted ошибка ссылка удалена
 var ErrLinkDeleted = errors.New("link is deleted")
 
 // randChar генерирует случайный символ из набора a-z,A-Z,0-9 и возвращает его байтовое представление.
@@ -183,6 +186,7 @@ func (s *Storage) DeleteUserURLS(ids struct {
 	UserID   int
 	LinksIDS []string
 }) (err error) {
+	logger.Log.Debug("delete URLs", zap.Int("UserID", ids.UserID), zap.Strings("IDs", ids.LinksIDS))
 	chDone := make(chan struct{})
 	defer close(chDone)
 	inputCh := s.generator(chDone, ids)

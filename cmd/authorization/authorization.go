@@ -8,13 +8,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// Claims описывает структуру для генерации токена
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID int
 }
 
+// SecretKEY код для шифрования
 const SecretKEY = "supersecretkey"
 
+// CheckToken проверяет токен на правильность и достает из него user ID
 func CheckToken(tokenString string) (int, error) {
 	// задавем утверждения Claims
 	logger.Log.Debug("token", zap.String("token", tokenString))
@@ -36,6 +39,7 @@ func CheckToken(tokenString string) (int, error) {
 	return cl.UserID, nil
 }
 
+// SetToken создает защищенный токен
 func SetToken(id int) (string, error) {
 	// задаем утверждения Claims
 	var cl = Claims{

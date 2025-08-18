@@ -8,6 +8,7 @@ import (
 	"github.com/h1067675/shortUrl/internal/logger"
 )
 
+// структуры
 type (
 	// Handler связывает с хэндлерами
 	Handler interface {
@@ -26,12 +27,12 @@ type (
 	}
 )
 
-// NewConnect создает коннектор
-func (r *Router) New() {
-	r = &Router{
-		chi.NewRouter(),
-	}
-}
+// // NewConnect создает коннектор
+// func (r *Router) New() {
+// 	r = &Router{
+// 		chi.NewRouter(),
+// 	}
+// }
 
 // RouterFunc делает маршрутизацию к хандлерам.
 func (r Router) RouterFunc(handlers Handler) chi.Router {
@@ -41,6 +42,7 @@ func (r Router) RouterFunc(handlers Handler) chi.Router {
 	r.Router.Use(handlers.Authorization)
 	r.Router.Use(compress.CompressHandle)
 	r.Router.Use(logger.RequestLogger)
+
 	// Делаем маршрутизацию
 	r.Router.Route("/", func(r chi.Router) {
 		r.Post("/", handlers.ShortenHandler) // POST запрос отправляем на сокращение ссылки

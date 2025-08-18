@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -20,17 +19,15 @@ import (
 )
 
 const (
-	keyUserID int = iota
+	keyUserID key = iota
 	keyNewUser
 )
 
-// ErrLinkExsist возвращает ошибку URL уже существует
-var ErrLinkExsist = errors.New("link already exsist")
-
-// ErrLinkDeleted возвращает ошибку URL удален
-var ErrLinkDeleted = errors.New("link is deleted")
-
+// структуры
 type (
+	// key необходим для передачи через context
+	key int
+
 	// Application описывает структуру зависимостей для доступа к базе данных и настройкам приложения
 	Application struct {
 		Storage *storage.Storage
@@ -84,6 +81,7 @@ func (app *Application) StartServer() {
 // Authorization осуществляет авторизацию пользователя.
 func (app *Application) Authorization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		logger.Log.Debug("Handler Authorization")
 		var (
 			err    error
 			userid int
@@ -134,6 +132,7 @@ func (app *Application) CheckDBHandler(responce http.ResponseWriter, request *ht
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ShortenHandler")
 	var err error
 	var body string
 	// проверяем на content-type
@@ -170,6 +169,7 @@ func (app *Application) ShortenHandler(responce http.ResponseWriter, request *ht
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ShortenJSONHandler")
 	var err error
 	var body []byte
 	// проверяем на content-type
@@ -217,6 +217,7 @@ func (app *Application) ShortenJSONHandler(responce http.ResponseWriter, request
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenBatchJSONHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ShortenBatchJSONHandler")
 	var err error
 	var body []byte
 	// проверяем на content-type
@@ -260,11 +261,12 @@ func (app *Application) ShortenBatchJSONHandler(responce http.ResponseWriter, re
 
 // ExpandHandler получет адрес по короткой ссылке из GET запроса.
 func (app *Application) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ExpandHandler")
 	if request.Method == http.MethodGet {
 		ctx := request.Context()
 		outURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
 		logger.Log.Debug("error from func", zap.Error(err))
-		if err == ErrLinkDeleted {
+		if err == storage.ErrLinkDeleted {
 			logger.Log.Debug("URL has been deleted", zap.Error(err))
 			responce.WriteHeader(http.StatusGone)
 			return
@@ -281,6 +283,7 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 
 // ExpandUserURLSHandler получает весь список сокращенных адресов пользователем прошедшив авторизацию.
 func (app *Application) ExpandUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler ExpandUserURLSHandler")
 	var urls []JsUserRequest
 	ctx := request.Context()
 
@@ -313,6 +316,7 @@ func (app *Application) ExpandUserURLSHandler(responce http.ResponseWriter, requ
 
 // DeleteUserURLSHandler удалет указанные в JSON сокращенные адреса пользователя прошедшего авторизацию.
 func (app *Application) DeleteUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler DeleteUserURLSHandler")
 	var err error
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		var js []byte
@@ -335,6 +339,7 @@ func (app *Application) DeleteUserURLSHandler(responce http.ResponseWriter, requ
 			}
 			app.Storage.DeleteUserURLS(ids)
 			responce.WriteHeader(http.StatusAccepted)
+			return
 		}
 	}
 	responce.WriteHeader(http.StatusBadRequest)
