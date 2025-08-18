@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	keyUserID int = iota
+	keyUserID key = iota
 	keyNewUser
 )
 
@@ -31,6 +31,8 @@ var ErrLinkExsist = errors.New("link already exsist")
 var ErrLinkDeleted = errors.New("link is deleted")
 
 type (
+	key int
+
 	// Application описывает структуру зависимостей для доступа к базе данных и настройкам приложения
 	Application struct {
 		Storage *storage.Storage

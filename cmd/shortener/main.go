@@ -35,17 +35,18 @@ func main() {
 	if !st.DB.Connected && conf.FileStoragePath.Path != "" {
 		st.RestoreFromfile(conf.FileStoragePath.Path)
 	}
-	// Создаем соединение и помещвем в него переменные хранения и конфигурации
-	var application handlers.Application
+	// Создаем соединение и маршрутизацию
 	var router router.Router
 	router.New()
+	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
+	var application handlers.Application
 	application.New(st, conf, router)
 	// Запускаем сервер
 	application.StartServer()
 	// time.Sleep(10 * time.Second)
 
 	// // создаём файл журнала профилирования памяти
-	// fmem, err := os.Create(`base.pprof`)
+	// fmem, err := os.Create(`profiles/base.pprof`)
 	// if err != nil {
 	// 	panic(err)
 	// }
