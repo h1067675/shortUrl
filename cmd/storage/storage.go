@@ -11,35 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Storager описывает интерфейс хранения данных.
-type Storager interface {
-	CreateShortURL(url string, adr string, useris int) (string, error)
-	GetURL(url string, userid int) (l string, e error)
-	SaveToFile(file string)
-	PingDB() bool
-	GetNewUserID() (int, error)
-	GetUserURLS(int) ([]struct {
-		ShortURL string
-		URL      string
-	}, error)
-	GetDB() (result struct {
-		links []struct {
-			InnerLink  string
-			OutterLink string
-			IDLink     int
-		}
-		users []struct {
-			id int
-			dt string
-		}
-		usersLinks []struct {
-			userid int
-			linkid int
-		}
-	}, err error)
-	DeleteUserURLS(DeleteUserURLS) error
-}
-
 // Storage описывает структуру для хранения ссылок в переменной.
 type Storage struct {
 	InnerLinks  map[string]string
@@ -47,11 +18,6 @@ type Storage struct {
 	Users       map[int][]string
 	UsersLinks  map[string][]int
 	DB          *SQLDB
-}
-
-type DeleteUserURLS struct {
-	UserID   int
-	LinksIDS []string
 }
 
 // NewStorage создает новое хранилище.
@@ -213,7 +179,10 @@ func (s *Storage) GetUserURLS(id int) (result []struct {
 }
 
 // DeleteUserURLS удаляет все ссылки определенного пользователя.
-func (s *Storage) DeleteUserURLS(ids DeleteUserURLS) (err error) {
+func (s *Storage) DeleteUserURLS(ids struct {
+	UserID   int
+	LinksIDS []string
+}) (err error) {
 	chDone := make(chan struct{})
 	defer close(chDone)
 	inputCh := s.generator(chDone, ids)

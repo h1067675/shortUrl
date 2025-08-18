@@ -13,7 +13,9 @@ import (
 
 	"github.com/h1067675/shortUrl/cmd/configsurl"
 	"github.com/h1067675/shortUrl/cmd/storage"
+	"github.com/h1067675/shortUrl/internal/handlers"
 	"github.com/h1067675/shortUrl/internal/logger"
+	"github.com/h1067675/shortUrl/internal/router"
 )
 
 // Start - загружает настройки и стартует сервер
@@ -28,15 +30,18 @@ func main() {
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
 	conf.Set()
 	// Создаем хранилище данных
-	var storage = storage.NewStorage(conf.DatabaseDSN.String())
+	var st = storage.NewStorage(conf.DatabaseDSN.String())
 	// Если соединение с базой данных не установлено или не получилось создать таблицу, то загружаем ссылки из файла
-	if !storage.DB.Connected && conf.FileStoragePath.Path != "" {
-		storage.RestoreFromfile(conf.FileStoragePath.Path)
+	if !st.DB.Connected && conf.FileStoragePath.Path != "" {
+		st.RestoreFromfile(conf.FileStoragePath.Path)
 	}
 	// Создаем соединение и помещвем в него переменные хранения и конфигурации
-	var conn = NewConnect(storage, conf)
+	var application handlers.Application
+	var router router.Router
+	router.New()
+	application.New(st, conf, router)
 	// Запускаем сервер
-	conn.StartServer()
+	application.StartServer()
 	// time.Sleep(10 * time.Second)
 
 	// // создаём файл журнала профилирования памяти

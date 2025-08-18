@@ -49,3 +49,18 @@ func BenchmarkGetURL(b *testing.B) {
 		s.GetURL(url, 0)
 	}
 }
+
+func BenchmarkSaveToFile(b *testing.B) {
+	b.StopTimer()
+	logger.Initialize("info")
+	s := NewStorage("")
+	for j := 0; j < 1000; j++ {
+		url := createRandURL()
+		adr := s.createShortCode(url)
+		s.CreateShortURL(url, adr, 0)
+	}
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		s.SaveToFile("./banckmark_tmp.json")
+	}
+}

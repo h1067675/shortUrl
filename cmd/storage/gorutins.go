@@ -4,7 +4,10 @@ import (
 	"sync"
 )
 
-func (s *Storage) generator(chDone chan struct{}, ids DeleteUserURLS) chan struct {
+func (s *Storage) generator(chDone chan struct{}, ids struct {
+	UserID   int
+	LinksIDS []string
+}) chan struct {
 	userID int
 	linkID string
 } {
