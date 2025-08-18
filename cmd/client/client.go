@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	JsonData = "application/json"
+	JSONData = "application/json"
 	TextData = "text/plain"
 )
 
@@ -93,7 +93,6 @@ func (c Client) StartServer() {
 	}
 	// Создаем соединение и маршрутизацию
 	var router router.Router
-	router.New()
 	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
 	var application handlers.Application
 	application.New(st, conf, router)

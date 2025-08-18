@@ -37,7 +37,6 @@ func main() {
 	}
 	// Создаем соединение и маршрутизацию
 	var router router.Router
-	router.New()
 	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
 	var application handlers.Application
 	application.New(st, conf, router)

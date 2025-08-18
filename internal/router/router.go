@@ -26,12 +26,12 @@ type (
 	}
 )
 
-// NewConnect создает коннектор
-func (r *Router) New() {
-	r = &Router{
-		chi.NewRouter(),
-	}
-}
+// // NewConnect создает коннектор
+// func (r *Router) New() {
+// 	r = &Router{
+// 		chi.NewRouter(),
+// 	}
+// }
 
 // RouterFunc делает маршрутизацию к хандлерам.
 func (r Router) RouterFunc(handlers Handler) chi.Router {

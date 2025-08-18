@@ -183,6 +183,7 @@ func (s *Storage) DeleteUserURLS(ids struct {
 	UserID   int
 	LinksIDS []string
 }) (err error) {
+	logger.Log.Debug("delete URLs", zap.Int("UserID", ids.UserID), zap.Strings("IDs", ids.LinksIDS))
 	chDone := make(chan struct{})
 	defer close(chDone)
 	inputCh := s.generator(chDone, ids)
