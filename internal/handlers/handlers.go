@@ -316,6 +316,7 @@ func (app *Application) ExpandUserURLSHandler(responce http.ResponseWriter, requ
 // DeleteUserURLSHandler удалет указанные в JSON сокращенные адреса пользователя прошедшего авторизацию.
 func (app *Application) DeleteUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
 	var err error
+	logger.Log.Debug("Handler DeleteUserURLSHandler")
 	if strings.Contains(request.Header.Get("Content-Type"), "application/json") || strings.Contains(request.Header.Get("Content-type"), "application/x-gzip") {
 		var js []byte
 		js, err = io.ReadAll(request.Body)
