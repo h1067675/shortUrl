@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/h1067675/shortUrl/internal/logger"
+	"go.uber.org/zap"
 )
 
 func createRandURL() string {
@@ -23,20 +25,29 @@ func BenchmarkCreateShortCode(b *testing.B) {
 
 func BenchmarkCreateShortURL(b *testing.B) {
 	b.StopTimer()
-	logger.Initialize("info")
+	err := logger.Initialize("info")
+	if err != nil {
+		fmt.Print(err)
+	}
 	s := NewStorage("")
 	for i := 0; i < b.N; i++ {
 		url := createRandURL()
 		adr := s.createShortCode(url)
 		b.StartTimer()
-		s.CreateShortURL(url, adr, 0)
+		_, err := s.CreateShortURL(url, adr, 0)
+		if err != nil {
+			logger.Log.Info("Errors create short URL", zap.String("Error", err.Error()))
+		}
 	}
 }
 
 func BenchmarkGetNewUserID(b *testing.B) {
 	s := NewStorage("")
 	for i := 0; i < b.N; i++ {
-		s.GetNewUserID()
+		_, err := s.GetNewUserID()
+		if err != nil {
+			logger.Log.Info("Error get new user ID", zap.String("Error", err.Error()))
+		}
 	}
 }
 
@@ -46,21 +57,33 @@ func BenchmarkGetURL(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		url := createRandURL()
 		b.StartTimer()
-		s.GetURL(url, 0)
+		_, err := s.GetURL(url, 0)
+		if err != nil {
+			logger.Log.Info("Error getting URL", zap.String("Error", err.Error()))
+		}
 	}
 }
 
 func BenchmarkSaveToFile(b *testing.B) {
 	b.StopTimer()
-	logger.Initialize("info")
+	err := logger.Initialize("info")
+	if err != nil {
+		fmt.Print(err)
+	}
 	s := NewStorage("")
 	for j := 0; j < 1000; j++ {
 		url := createRandURL()
 		adr := s.createShortCode(url)
-		s.CreateShortURL(url, adr, 0)
+		_, err := s.CreateShortURL(url, adr, 0)
+		if err != nil {
+			logger.Log.Info("Errors create short URL", zap.String("Error", err.Error()))
+		}
 	}
 	for i := 0; i < b.N; i++ {
 		b.StartTimer()
-		s.SaveToFile("./banckmark_tmp.json")
+		err := s.SaveToFile("./banckmark_tmp.json")
+		if err != nil {
+			logger.Log.Info("Errors safe file", zap.String("Error", err.Error()))
+		}
 	}
 }

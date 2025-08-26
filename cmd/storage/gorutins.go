@@ -1,3 +1,4 @@
+// Package storage реализует хранение и доступ к данным
 package storage
 
 import (

@@ -11,11 +11,14 @@ import (
 	// "net/http"
 	// _ "net/http/pprof" // подключаем пакет pprof
 
+	"fmt"
+
 	"github.com/h1067675/shortUrl/cmd/configsurl"
 	"github.com/h1067675/shortUrl/cmd/storage"
 	"github.com/h1067675/shortUrl/internal/handlers"
 	"github.com/h1067675/shortUrl/internal/logger"
 	"github.com/h1067675/shortUrl/internal/router"
+	"go.uber.org/zap"
 )
 
 // Start - загружает настройки и стартует сервер
@@ -24,11 +27,20 @@ func main() {
 	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
 	// }()
 	// Инициализируем логгер
-	logger.Initialize("debug")
+	err := logger.Initialize("debug")
+	if err != nil {
+		fmt.Print(err)
+	}
 	// Устанавливаем настройки приложения по умолчанию
-	var conf = configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=prefer")
+	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=prefer")
+	if err != nil {
+		logger.Log.Debug("Errors when configuring the server", zap.String("Error", err.Error()))
+	}
 	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
-	conf.Set()
+	err = conf.Set()
+	if err != nil {
+		logger.Log.Debug("", zap.String("Errors when setting startup parameters and environment variables", err.Error()))
+	}
 	// Создаем хранилище данных
 	var st = storage.NewStorage(conf.DatabaseDSN.String())
 	// Если соединение с базой данных не установлено или не получилось создать таблицу, то загружаем ссылки из файла

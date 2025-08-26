@@ -1,15 +1,17 @@
+// Package configsurl реализует конфигурирование сервера
 package configsurl
 
 import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/h1067675/shortUrl/internal/logger"
+	"go.uber.org/zap"
 )
 
 // структуры
@@ -50,7 +52,7 @@ type (
 
 // NewConfig создает конфиг и получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
 // адреса по умолчанию: localhost:8080.
-func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) *Config {
+func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) (*Config, error) {
 	var r = Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
 		NetAddressServerShortener: NetAddressServer{
 			// переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
@@ -64,16 +66,15 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 		},
 		EnvConf: EnvConfig{},
 	}
-	r.NetAddressServerShortener.Set(netAddressServerShortener)
-	r.NetAddressServerExpand.Set(netAddressServerExpand)
-	r.FileStoragePath.Set(fileStoragePath)
-	r.DatabaseDSN.Set(dbPath)
-	return &r
+	err1 := r.NetAddressServerShortener.Set(netAddressServerShortener)
+	err2 := r.NetAddressServerExpand.Set(netAddressServerExpand)
+	err3 := r.FileStoragePath.Set(fileStoragePath)
+	err4 := r.DatabaseDSN.Set(dbPath)
+	return &r, errors.Join(err1, err2, err3, err4)
 }
 
 // checkNetAddress проверяtn на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию.
-func checkNetAddress(s string, h string, p int) (host string, port int, e error) {
-	host, port = h, p
+func checkNetAddress(s string) (host string, port int, e error) {
 	v := strings.Split(s, "://")
 	if len(v) < 1 || len(v) > 2 {
 		e = errors.New("incorrect net address")
@@ -110,11 +111,9 @@ func (n *NetAddressServer) String() string {
 
 // Set устанавливет значения host и port в переменные.
 func (n *NetAddressServer) Set(s string) (err error) {
-	n.Host, n.Port, err = checkNetAddress(s, n.Host, n.Port)
-	if err != nil {
-		return err
-	}
-	return nil
+	p, h, err := checkNetAddress(s)
+	n.Host, n.Port = p, h
+	return err
 }
 
 // Set сохраняет значение переменной среды.
@@ -150,30 +149,35 @@ func (c *Config) ParseFlags() {
 }
 
 // EnvConfigSet забирает переменные окружения и если они установлены и сохраняет в конфиг.
-func (c *Config) EnvConfigSet() {
-	err := env.Parse(&c.EnvConf)
+func (c *Config) EnvConfigSet() (err error) {
+	err = env.Parse(&c.EnvConf)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Debug("Error parse ENVs", zap.String("Error", err.Error()))
 	}
 	if c.EnvConf.ServerShortener != "" {
-		c.NetAddressServerShortener.Set(c.EnvConf.ServerShortener)
+		err1 := c.NetAddressServerShortener.Set(c.EnvConf.ServerShortener)
+		err = errors.Join(err, err1)
 	}
 	if c.EnvConf.ServerExpand != "" {
-		c.NetAddressServerExpand.Set(c.EnvConf.ServerExpand)
+		err1 := c.NetAddressServerExpand.Set(c.EnvConf.ServerExpand)
+		err = errors.Join(err, err1)
 	}
 	if c.EnvConf.FileStoragePath != "" {
-		c.FileStoragePath.Set(c.EnvConf.FileStoragePath)
+		err1 := c.FileStoragePath.Set(c.EnvConf.FileStoragePath)
+		err = errors.Join(err, err1)
 	}
-	fmt.Print(c.EnvConf.DatabaseDSN)
 	if c.EnvConf.DatabaseDSN != "" {
-		c.DatabaseDSN.Set(c.EnvConf.DatabaseDSN)
+		err1 := c.DatabaseDSN.Set(c.EnvConf.DatabaseDSN)
+		err = errors.Join(err, err1)
 	}
+	return
 }
 
 // Set инициирует процесс установки настроек.
-func (c *Config) Set() {
+func (c *Config) Set() error {
 	c.ParseFlags()
-	c.EnvConfigSet()
+	err := c.EnvConfigSet()
+	return err
 }
 
 // GetConfig возвращает данные настроек в текстовом формате.

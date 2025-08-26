@@ -224,18 +224,26 @@ func (s *Storage) deleteFromDB(chIn chan struct {
 	if err != nil {
 		return
 	}
-	defer tx.Commit()
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
 	for ch := range chIn {
 		if ch.linkID > 0 {
 			_, err = tx.Exec("UPDATE users_links SET is_deleted = TRUE WHERE Id = $1 AND LinkId = $2", ch.userID, ch.linkID)
 			logger.Log.Debug("DB query ", zap.String("UPDATE", fmt.Sprintf("UPDATE users_links SET is_deleted = TRUE WHERE Id = %v AND LinkId = %v", ch.userID, ch.linkID)))
 			if err != nil {
 				// если ошибка, то откатываем изменения
-				tx.Rollback()
+				_ = tx.Rollback()
 			}
 		}
 	}
-	tx.Commit()
 }
 
 // GetDB получает все ссылки из базы данных для помещения их в map.

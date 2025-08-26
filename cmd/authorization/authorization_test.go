@@ -1,6 +1,7 @@
 package authorization
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -26,7 +27,10 @@ func TestSetToken(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	logger.Initialize("debug")
+	err := logger.Initialize("debug")
+	if err != nil {
+		fmt.Print(err)
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := SetToken(tt.args.id)
@@ -60,7 +64,10 @@ func TestCheckToken(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	logger.Initialize("debug")
+	err := logger.Initialize("debug")
+	if err != nil {
+		fmt.Print(err)
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token, _ := SetToken(tt.args.id)
