@@ -73,11 +73,11 @@ func (app *Application) New(s *storage.Storage, c *configsurl.Config, r router.R
 
 // StartServer запускает сервер.
 func (app *Application) StartServer() {
-	var err error
-	server := &http.Server{
-		Addr:    app.Config.GetConfig().ServerAddress,
-		Handler: app.Router.RouterFunc(app),
-	}
+	// var err error
+	// server := &http.Server{
+	// 	Addr:    app.Config.GetConfig().ServerAddress,
+	// 	Handler: app.Router.RouterFunc(app),
+	// }
 
 	// if app.Config.EnableHTTPS.On {
 	// 	// конструируем менеджер TLS-сертификатов
@@ -91,9 +91,10 @@ func (app *Application) StartServer() {
 	// 	server.TLSConfig = manager.TLSConfig()
 	// 	err = server.ListenAndServeTLS("", "")
 	// } else {
-	err = server.ListenAndServe()
+	// err = server.ListenAndServe()
 	// }
-	if err != nil {
+	if err := http.ListenAndServe(app.Config.GetConfig().ServerAddress, app.Router.RouterFunc(app)); err != nil {
+
 		logger.Log.Fatal(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
 	}
 }
