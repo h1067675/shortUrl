@@ -22,6 +22,7 @@ type (
 		NetAddressServerExpand    NetAddressServer
 		FileStoragePath           FilePath
 		DatabaseDSN               DatabasePath
+		EnableHTTPS               EnableHTTPS
 		EnvConf                   EnvConfig
 	}
 
@@ -41,12 +42,18 @@ type (
 		Path string
 	}
 
+	// EnableHTTPS определяет настройку использования HTTPS
+	EnableHTTPS struct {
+		On bool
+	}
+
 	// EnvConfig описывает название переменных среды.
 	EnvConfig struct {
 		ServerShortener string `env:"SERVER_ADDRESS"`
 		ServerExpand    string `env:"BASE_URL"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		DatabaseDSN     string `env:"DATABASE_DSN"`
+		EnableHTTPS     string `env:"ENABLE_HTTPS"`
 	}
 )
 
@@ -138,14 +145,22 @@ func (n *DatabasePath) String() string {
 	return n.Path
 }
 
+// String возвращает путь файла.
+func (n *EnableHTTPS) String() string {
+	if n.On {
+		return "HTTPS enabled"
+	}
+	return "HTTPS disabled"
+}
+
 // ParseFlags разбирает атрибуты командной строки.
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
 	flag.Var(&c.FileStoragePath, "f", "File storage path")
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
+	flag.BoolVar(&c.EnableHTTPS.On, "e", false, "Enable HTTPS")
 	flag.Parse()
-	fmt.Print(c.DatabaseDSN)
 }
 
 // EnvConfigSet забирает переменные окружения и если они установлены и сохраняет в конфиг.
