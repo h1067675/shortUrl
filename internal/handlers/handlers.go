@@ -286,7 +286,6 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 	if request.Method == http.MethodGet {
 		ctx := request.Context()
 		outURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
-		logger.Log.Debug("error from func", zap.Error(err))
 		if err == storage.ErrLinkDeleted {
 			logger.Log.Debug("URL has been deleted", zap.Error(err))
 			responce.WriteHeader(http.StatusGone)
@@ -295,6 +294,7 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 			logger.Log.Debug("Can't to get URL", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 		}
+		logger.Log.Debug("URL expanded " + outURL)
 		responce.Header().Add("Location", outURL)
 		responce.WriteHeader(http.StatusTemporaryRedirect)
 		return

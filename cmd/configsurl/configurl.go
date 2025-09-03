@@ -160,6 +160,7 @@ func (c *Config) ParseFlags() {
 	flag.Var(&c.FileStoragePath, "f", "File storage path")
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
 	flag.BoolVar(&c.EnableHTTPS.On, "e", false, "Enable HTTPS")
+	logger.Log.Debug(c.GetConfig().DatabasePath)
 	flag.Parse()
 }
 
