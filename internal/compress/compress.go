@@ -27,8 +27,7 @@ func CompressHandle(next http.Handler) http.Handler {
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			logger.Log.Debug("Accept-Encoding gzip")
 			logger.Log.Debug(r.Header.Get("Content-type"))
-			if strings.Contains(r.Header.Get("Content-type"), "application/json") || strings.Contains(r.Header.Get("Content-type"), "text/plain") {
-				logger.Log.Debug("gzip decode")
+			if strings.Contains(r.Header.Get("Content-type"), "application/json") || strings.Contains(r.Header.Get("Content-type"), "text/html") {
 				gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 				if err != nil {
 					logger.Log.Debug(err.Error())
@@ -41,6 +40,7 @@ func CompressHandle(next http.Handler) http.Handler {
 		}
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && strings.Contains(r.Header.Get("Content-type"), "application/x-gzip") {
 			logger.Log.Debug("Content-Encoding gzip")
+			logger.Log.Debug("gzip decode")
 			cr, err := gzip.NewReader(r.Body)
 			if err != nil {
 				logger.Log.Debug(err.Error())
