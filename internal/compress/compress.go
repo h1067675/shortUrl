@@ -38,7 +38,7 @@ func CompressHandle(next http.Handler) http.Handler {
 				w = compressWriter{ResponseWriter: w, Writer: gz}
 			}
 		}
-		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && strings.Contains(r.Header.Get("Content-type"), "application/x-gzip") {
+		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
 			logger.Log.Debug("Content-Encoding gzip")
 			logger.Log.Debug("gzip decode")
 			cr, err := gzip.NewReader(r.Body)
