@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
 // compressWriter описывает структуру необходимую для сжатия данных.
@@ -21,7 +23,9 @@ func (w compressWriter) Write(b []byte) (int, error) {
 // CompressHandle промежуточный хэндлер отвечающий за сжатие данных
 func CompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Log.Debug("Handler CompressHandle")
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			logger.Log.Debug(r.Header.Get("Accept-Encoding"))
 			if strings.Contains(r.Header.Get("Content-type"), "application/json") || strings.Contains(r.Header.Get("Content-type"), "text/html") {
 				gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 				if err != nil {
@@ -34,6 +38,7 @@ func CompressHandle(next http.Handler) http.Handler {
 			}
 		}
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && strings.Contains(r.Header.Get("Content-type"), "application/x-gzip") {
+			logger.Log.Debug(r.Header.Get("Content-Encoding"))
 			cr, err := gzip.NewReader(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
