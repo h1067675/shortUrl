@@ -25,11 +25,11 @@ func CompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Debug("Handler CompressHandle")
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			logger.Log.Debug(r.Header.Get("Accept-Encoding"))
+			logger.Log.Debug("Accept-Encoding gzip")
 			if strings.Contains(r.Header.Get("Content-type"), "application/json") || strings.Contains(r.Header.Get("Content-type"), "text/html") {
 				gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 				if err != nil {
-					io.WriteString(w, err.Error())
+					logger.Log.Debug(err.Error())
 					return
 				}
 				defer gz.Close()
@@ -38,9 +38,10 @@ func CompressHandle(next http.Handler) http.Handler {
 			}
 		}
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && strings.Contains(r.Header.Get("Content-type"), "application/x-gzip") {
-			logger.Log.Debug(r.Header.Get("Content-Encoding"))
+			logger.Log.Debug("Content-Encoding gzip")
 			cr, err := gzip.NewReader(r.Body)
 			if err != nil {
+				logger.Log.Debug(err.Error())
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
