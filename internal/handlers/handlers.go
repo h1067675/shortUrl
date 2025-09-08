@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/h1067675/shortUrl/cmd/authorization"
 	"github.com/h1067675/shortUrl/cmd/configsurl"
@@ -73,30 +74,32 @@ func (app *Application) New(s *storage.Storage, c *configsurl.Config, r router.R
 
 // StartServer запускает сервер.
 func (app *Application) StartServer() {
-	// var err error
-	// server := &http.Server{
-	// 	Addr:    app.Config.GetConfig().ServerAddress,
-	// 	Handler: app.Router.RouterFunc(app),
-	// }
-
-	// if app.Config.EnableHTTPS.On {
-	// 	// конструируем менеджер TLS-сертификатов
-	// 	manager := &autocert.Manager{
-	// 		// директория для хранения сертификатов
-	// 		Cache: autocert.DirCache("cache-dir"),
-	// 		// функция, принимающая Terms of Service издателя сертификатов
-	// 		Prompt:     autocert.AcceptTOS,
-	// 		HostPolicy: autocert.HostWhitelist(app.Config.GetConfig().ServerAddress),
-	// 	}
-	// 	server.TLSConfig = manager.TLSConfig()
-	// 	err = server.ListenAndServeTLS("", "")
-	// } else {
-	// err = server.ListenAndServe()
-	// }
-	if err := http.ListenAndServe(app.Config.GetConfig().ServerAddress, app.Router.RouterFunc(app)); err != nil {
-
-		logger.Log.Fatal(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+	var err error
+	// Определяем сервер и указываем адрес и ручку
+	server := &http.Server{
+		Addr:    app.Config.GetConfig().ServerAddress,
+		Handler: app.Router.RouterFunc(app),
 	}
+
+	// Если определено в настройках использование HTTPS то запускаем сервер через ListenAndServeTLS
+	if app.Config.EnableHTTPS.On {
+		// конструируем менеджер TLS-сертификатов
+		manager := &autocert.Manager{
+			// директория для хранения сертификатов
+			Cache: autocert.DirCache("cache-dir"),
+			// функция, принимающая Terms of Service издателя сертификатов
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(app.Config.GetConfig().ServerAddress),
+		}
+		server.TLSConfig = manager.TLSConfig()
+		// Запускаем сервер с HTTPS
+		err = server.ListenAndServeTLS("", "")
+	} else {
+		// Запускаем сервер через HTTP
+		err = server.ListenAndServe()
+	}
+
+	logger.Log.Fatal(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
 }
 
 // Authorization осуществляет авторизацию пользователя.

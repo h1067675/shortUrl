@@ -52,7 +52,7 @@ func main() {
 		fmt.Print(err)
 	}
 	// Устанавливаем настройки приложения по умолчанию
-	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=prefer")
+	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=disable")
 	if err != nil {
 		logger.Log.Debug("Errors when configuring the server", zap.String("Error", err.Error()))
 	}
