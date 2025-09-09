@@ -1,0 +1,6 @@
+{
+    "server_address": "localhost:8082",
+    "base_url": "localhost:8082",
+    "file_storage_path": "./storage.json",
+    "database_dsn": ""
+}
