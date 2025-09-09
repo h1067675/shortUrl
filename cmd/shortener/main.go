@@ -28,8 +28,8 @@ var (
 	buildCommit  string
 )
 
-// Start - загружает настройки и стартует сервер
 func main() {
+	// Получаем глобальные переменные версии и выводим в консоль
 	if buildVersion == "" {
 		buildVersion = "N/A"
 	}
@@ -52,19 +52,24 @@ func main() {
 	if err != nil {
 		fmt.Print(err)
 	}
+
 	// Устанавливаем настройки приложения по умолчанию
 	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.js", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=disable")
 	if err != nil {
 		logger.Log.Debug("Errors when configuring the server", zap.String("Error", err.Error()))
 	}
+
 	// Создаем хранилище данных
 	var st = storage.NewStorage(conf.DatabaseDSN.String())
+
 	// Если соединение с базой данных не установлено или не получилось создать таблицу, то загружаем ссылки из файла
 	if !st.DB.Connected && conf.FileStoragePath.Path != "" {
 		st.RestoreFromfile(conf.FileStoragePath.Path)
 	}
+
 	// Создаем соединение и маршрутизацию
 	var router router.Router
+
 	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
 	var application handlers.Application
 	application.New(st, conf, router)
@@ -73,7 +78,6 @@ func main() {
 	application.StartServer()
 
 	// time.Sleep(10 * time.Second)
-
 	// // создаём файл журнала профилирования памяти
 	// fmem, err := os.Create(`profiles/base.pprof`)
 	// if err != nil {

@@ -7,7 +7,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
@@ -75,12 +78,35 @@ func (app *Application) New(s *storage.Storage, c *configsurl.Config, r router.R
 // StartServer запускает сервер.
 func (app *Application) StartServer() {
 	var err error
+
 	// Определяем сервер и указываем адрес и ручку
 	server := &http.Server{
 		Addr:    app.Config.GetConfig().ServerAddress,
 		Handler: app.Router.RouterFunc(app),
 	}
 
+	// Определяем логику для отслеживания сигналов завершения работы приложения и
+	// реализуем процесс мягкого завершения работы приложения.
+
+	// через этот канал сообщим основному потоку, что соединения закрыты
+	idleConnsClosed := make(chan struct{})
+	// канал для перенаправления прерываний
+	sigint := make(chan os.Signal, 1)
+	// регистрируем перенаправление прерываний
+	signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// запускаем горутину обработки пойманных прерываний
+	go func() {
+		// читаем из канала прерываний
+		<-sigint
+		// получили сигнал, запускаем процедуру graceful shutdown сервера
+		if err := server.Shutdown(context.Background()); err != nil {
+			logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+		}
+		// сообщаем основному потоку, что все сетевые соединения обработаны и закрыты
+		close(idleConnsClosed)
+	}()
+
+	// Определяем порядок работы сервера через HTTPS или HHTP.
 	// Если определено в настройках использование HTTPS то запускаем сервер через ListenAndServeTLS
 	if app.Config.EnableHTTPS.On {
 		// конструируем менеджер TLS-сертификатов
@@ -98,8 +124,14 @@ func (app *Application) StartServer() {
 		// Запускаем сервер через HTTP
 		err = server.ListenAndServe()
 	}
+	if err != nil {
+		logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+	}
+	// Ждем мягкого завершения работы сервера
+	<-idleConnsClosed
 
-	logger.Log.Fatal(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+	// Сообщаем об окончании работы сервера
+	fmt.Println("Server has shutdown in graceful mode")
 }
 
 // Authorization осуществляет авторизацию пользователя.
