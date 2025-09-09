@@ -46,20 +46,16 @@ func main() {
 	// go func() {
 	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
 	// }()
+
 	// Инициализируем логгер
 	err := logger.Initialize("debug")
 	if err != nil {
 		fmt.Print(err)
 	}
 	// Устанавливаем настройки приложения по умолчанию
-	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.json", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=disable")
+	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.js", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=disable")
 	if err != nil {
 		logger.Log.Debug("Errors when configuring the server", zap.String("Error", err.Error()))
-	}
-	// Устанавливаем конфигурацию из параметров запуска или из переменных окружения
-	err = conf.Set()
-	if err != nil {
-		logger.Log.Debug("", zap.String("Errors when setting startup parameters and environment variables", err.Error()))
 	}
 	// Создаем хранилище данных
 	var st = storage.NewStorage(conf.DatabaseDSN.String())
@@ -72,8 +68,10 @@ func main() {
 	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
 	var application handlers.Application
 	application.New(st, conf, router)
+
 	// Запускаем сервер
 	application.StartServer()
+
 	// time.Sleep(10 * time.Second)
 
 	// // создаём файл журнала профилирования памяти
@@ -86,4 +84,5 @@ func main() {
 	// if err := pprof.WriteHeapProfile(fmem); err != nil {
 	// 	panic(err)
 	// }
+
 }
