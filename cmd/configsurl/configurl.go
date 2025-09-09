@@ -80,13 +80,11 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 	var r = Config{}
 	// Устанавливаем конфигурацию из переменных окружения
 	err = r.EnvConfigSet()
-	logger.Log.Debug("ENV DB string " + r.DatabaseDSN.String())
 	if err != nil {
 		logger.Log.Debug("", zap.String("Errors when setting startup parameters and environment variables", err.Error()))
 	}
 	// Устанавливаем конфигурацию из параметров запуска
 	r.ParseFlags()
-	logger.Log.Debug("Flag DB string " + r.DatabaseDSN.String())
 	// Проверяем есть ли в конфигурации файл с настройками JSON, если есть то читаем из него данные
 	var jscfg JSONConfigParse
 	if r.JSONConfigFile.String() != "" {
@@ -117,7 +115,6 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 			err = errors.Join(err, r.FileStoragePath.Set(fileStoragePath))
 		}
 	}
-	logger.Log.Debug("DB string " + r.DatabaseDSN.String())
 	if r.DatabaseDSN.String() == "" {
 		if jscfg.DatabaseDSN != "" {
 			err = errors.Join(err, r.DatabaseDSN.Set(jscfg.DatabaseDSN))
@@ -125,13 +122,11 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 			err = errors.Join(err, r.DatabaseDSN.Set(dbPath))
 		}
 	}
-	logger.Log.Debug("DB string " + r.DatabaseDSN.String())
 	if r.EnableHTTPS.String() == "" {
 		if jscfg.EnableHTTPS != "" {
 			r.EnableHTTPS.On = true
 		}
 	}
-	err = errors.Join(err, r.DatabaseDSN.Set(dbPath))
 	return &r, err
 }
 
