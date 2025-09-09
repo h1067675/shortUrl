@@ -2,10 +2,13 @@
 package configsurl
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -22,7 +25,9 @@ type (
 		NetAddressServerExpand    NetAddressServer
 		FileStoragePath           FilePath
 		DatabaseDSN               DatabasePath
+		EnableHTTPS               EnableHTTPS
 		EnvConf                   EnvConfig
+		JSONConfigFile            FilePath
 	}
 
 	// NetAddressServer описывает формат сетевого адреса для получения переменной среды.
@@ -41,36 +46,88 @@ type (
 		Path string
 	}
 
+	// EnableHTTPS определяет настройку использования HTTPS
+	EnableHTTPS struct {
+		On bool
+	}
+
 	// EnvConfig описывает название переменных среды.
 	EnvConfig struct {
 		ServerShortener string `env:"SERVER_ADDRESS"`
 		ServerExpand    string `env:"BASE_URL"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		DatabaseDSN     string `env:"DATABASE_DSN"`
+		EnableHTTPS     string `env:"ENABLE_HTTPS"`
+		JSONConfigFile  string `env:"CONFIG"`
+	}
+
+	JSONConfigParse struct {
+		ServerShortener string `json:"server_address"`
+		ServerExpand    string `json:"base_url"`
+		FileStoragePath string `json:"file_storage_path"`
+		DatabaseDSN     string `json:"database_dsn"`
+		EnableHTTPS     string `json:"enable_https"`
 	}
 )
 
-// NewConfig создает конфиг и получает адреса серверов в виде строки при этом если строки не установлены, то устанавливает
-// адреса по умолчанию: localhost:8080.
+// NewConfig создает конфиг и устанавливает настройки конфигурации в следующем приоритете:
+//  1. Параметры запуска
+//  2. Переменные среды
+//  3. Файл конфигурации
+//  4. Настройки по умолчанию
 func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) (*Config, error) {
-	var r = Config{ // переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
-		NetAddressServerShortener: NetAddressServer{
-			// переменная которая будет хранить сетевой адрес сервера (аргумент -a командной строки)
-			Host: "localhost",
-			Port: 8080,
-		},
-		NetAddressServerExpand: NetAddressServer{
-			// переменная которая будет хранить сетевой адрес подставляемый к сокращенным ссылкам (аргумент -b командной строки)
-			Host: "localhost",
-			Port: 8080,
-		},
-		EnvConf: EnvConfig{},
+	var err error
+	var r = Config{}
+	// Устанавливаем конфигурацию из переменных окружения
+	err = r.EnvConfigSet()
+	if err != nil {
+		logger.Log.Debug("", zap.String("Errors when setting startup parameters and environment variables", err.Error()))
 	}
-	err1 := r.NetAddressServerShortener.Set(netAddressServerShortener)
-	err2 := r.NetAddressServerExpand.Set(netAddressServerExpand)
-	err3 := r.FileStoragePath.Set(fileStoragePath)
-	err4 := r.DatabaseDSN.Set(dbPath)
-	return &r, errors.Join(err1, err2, err3, err4)
+	// Устанавливаем конфигурацию из параметров запуска
+	r.ParseFlags()
+	// Проверяем есть ли в конфигурации файл с настройками JSON, если есть то читаем из него данные
+	var jscfg JSONConfigParse
+	if r.JSONConfigFile.String() != "" {
+		var err1 error
+		jscfg, err1 = r.GetConfigFromJSONFile()
+		err = errors.Join(err, err1)
+	}
+	// перебираем все параметры и если есть параметры без значений заполняем
+	// их данными изначально из файла настроек, затем из настроек по умолчанию
+	if r.NetAddressServerExpand.String() == "" {
+		if jscfg.ServerExpand != "" {
+			err = errors.Join(err, r.NetAddressServerExpand.Set(jscfg.ServerExpand))
+		} else {
+			err = errors.Join(err, r.NetAddressServerExpand.Set(netAddressServerExpand))
+		}
+	}
+	if r.NetAddressServerShortener.String() == "" {
+		if jscfg.ServerShortener != "" {
+			err = errors.Join(err, r.NetAddressServerShortener.Set(jscfg.ServerShortener))
+		} else {
+			err = errors.Join(err, r.NetAddressServerShortener.Set(netAddressServerShortener))
+		}
+	}
+	if r.FileStoragePath.String() == "" {
+		if jscfg.FileStoragePath != "" {
+			err = errors.Join(err, r.FileStoragePath.Set(jscfg.FileStoragePath))
+		} else {
+			err = errors.Join(err, r.FileStoragePath.Set(fileStoragePath))
+		}
+	}
+	if r.DatabaseDSN.String() == "" {
+		if jscfg.DatabaseDSN != "" {
+			err = errors.Join(err, r.DatabaseDSN.Set(jscfg.DatabaseDSN))
+		} else {
+			err = errors.Join(err, r.DatabaseDSN.Set(dbPath))
+		}
+	}
+	if r.EnableHTTPS.String() == "" {
+		if jscfg.EnableHTTPS != "" {
+			r.EnableHTTPS.On = true
+		}
+	}
+	return &r, err
 }
 
 // checkNetAddress проверяtn на корректность указания пары host:port и в случае ошибки передающей значения по умолчанию.
@@ -106,7 +163,10 @@ func checkNetAddress(s string) (host string, port int, e error) {
 
 // String возвращает адрес вида host:port.
 func (n *NetAddressServer) String() string {
-	return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
+	if n.Port > 0 {
+		return fmt.Sprint(n.Host + ":" + strconv.Itoa(n.Port))
+	}
+	return fmt.Sprint(n.Host)
 }
 
 // Set устанавливет значения host и port в переменные.
@@ -127,7 +187,7 @@ func (n *FilePath) String() string {
 	return n.Path
 }
 
-// Set cохраняет значение переменной среды,
+// Set cохраняет значение переменной среды.
 func (n *DatabasePath) Set(s string) (err error) {
 	n.Path = s
 	return nil
@@ -138,14 +198,24 @@ func (n *DatabasePath) String() string {
 	return n.Path
 }
 
+// String возвращает путь файла.
+func (n *EnableHTTPS) String() string {
+	if n.On {
+		return "HTTPS enabled"
+	}
+	return "HTTPS disabled"
+}
+
 // ParseFlags разбирает атрибуты командной строки.
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
 	flag.Var(&c.FileStoragePath, "f", "File storage path")
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
+	flag.Var(&c.JSONConfigFile, "config", "Sets the path to the configuration file in JSON format")
+	flag.Var(&c.JSONConfigFile, "c", "reduction to -config flag")
+	flag.BoolVar(&c.EnableHTTPS.On, "e", false, "Enable HTTPS")
 	flag.Parse()
-	fmt.Print(c.DatabaseDSN)
 }
 
 // EnvConfigSet забирает переменные окружения и если они установлены и сохраняет в конфиг.
@@ -170,14 +240,36 @@ func (c *Config) EnvConfigSet() (err error) {
 		err1 := c.DatabaseDSN.Set(c.EnvConf.DatabaseDSN)
 		err = errors.Join(err, err1)
 	}
+	if c.EnvConf.EnableHTTPS != "" {
+		c.EnableHTTPS.On = true
+	}
+	if c.EnvConf.FileStoragePath != "" {
+		err1 := c.FileStoragePath.Set(c.EnvConf.FileStoragePath)
+		err = errors.Join(err, err1)
+	}
 	return
 }
 
-// Set инициирует процесс установки настроек.
-func (c *Config) Set() error {
-	c.ParseFlags()
-	err := c.EnvConfigSet()
-	return err
+// GetConfigFromJSONFile импортирует настройки из файла конфигурации
+func (c *Config) GetConfigFromJSONFile() (JSONConfigParse, error) {
+	var cfg JSONConfigParse
+	var err error
+	// получаем директорию текущего файла
+	appfile, err := os.Executable()
+	if err != nil {
+		return cfg, err
+	}
+	// читаем файл конфигурации
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(appfile), c.JSONConfigFile.String()))
+	if err != nil {
+		return cfg, err
+	}
+	// помещаем настройки из файла в структуру
+	if err = json.Unmarshal(data, &cfg); err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
 }
 
 // GetConfig возвращает данные настроек в текстовом формате.

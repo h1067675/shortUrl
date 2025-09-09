@@ -7,8 +7,9 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/h1067675/shortUrl/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
 // Storage описывает структуру для хранения ссылок в переменной.
@@ -29,7 +30,7 @@ func NewStorage(database string) *Storage {
 		UsersLinks:  map[string][]int{},
 		DB:          newDB(database),
 	}
-	//r.DB.Exec("DROP TABLE links;")
+	// r.DB.Exec("DROP TABLE links;")
 	// r.DB.Exec("DROP TABLE users;")
 	// r.DB.Exec("DROP TABLE users_links;")
 	if database == "" {
