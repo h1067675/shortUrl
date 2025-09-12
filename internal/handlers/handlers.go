@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
@@ -85,26 +86,8 @@ func (app *Application) StartServer() {
 		Handler: app.Router.RouterFunc(app),
 	}
 
-	// Определяем логику для отслеживания сигналов завершения работы приложения и
-	// реализуем процесс мягкого завершения работы приложения.
-
-	// через этот канал сообщим основному потоку, что соединения закрыты
-	idleConnsClosed := make(chan struct{})
-	// канал для перенаправления прерываний
-	sigint := make(chan os.Signal, 1)
-	// регистрируем перенаправление прерываний
-	signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	// запускаем горутину обработки пойманных прерываний
-	go func() {
-		// читаем из канала прерываний
-		<-sigint
-		// получили сигнал, запускаем процедуру graceful shutdown сервера
-		if err := server.Shutdown(context.Background()); err != nil {
-			logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
-		}
-		// сообщаем основному потоку, что все сетевые соединения обработаны и закрыты
-		close(idleConnsClosed)
-	}()
+	// Запускаем ожидание сигналов на завершение работы
+	idleConnsClosed := app.waitSysSignals(server)
 
 	// Определяем порядок работы сервера через HTTPS или HHTP.
 	// Если определено в настройках использование HTTPS то запускаем сервер через ListenAndServeTLS
@@ -127,11 +110,45 @@ func (app *Application) StartServer() {
 	if err != nil {
 		logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
 	}
+
 	// Ждем мягкого завершения работы сервера
 	<-idleConnsClosed
 
+	// Сохраняем хранилище из мапы в файл
+	app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
+	logger.Log.Info("Storage saved to " + app.Config.GetConfig().FileStoragePath)
+
 	// Сообщаем об окончании работы сервера
-	fmt.Println("Server has shutdown in graceful mode")
+	logger.Log.Info("Server has shutdown in graceful mode")
+}
+
+// WaitSysSignals определяет логику для отслеживания сигналов завершения работы приложения и
+// реализует процесс мягкого завершения работы приложения.
+func (app *Application) waitSysSignals(server *http.Server) chan struct{} {
+	// через этот канал сообщим основному потоку, что соединения закрыты
+	idleConnsClosed := make(chan struct{})
+	// канал для перенаправления прерываний
+	sigint := make(chan os.Signal, 1)
+	// регистрируем перенаправление прерываний
+	signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// запускаем горутину обработки пойманных прерываний
+	go func() {
+		// читаем из канала прерываний
+		<-sigint
+
+		// создаем контекст с таймаутом на завершение операций сервером
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+
+		// получили сигнал, запускаем процедуру graceful shutdown сервера
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+		}
+
+		// сообщаем основному потоку, что все сетевые соединения обработаны и закрыты
+		close(idleConnsClosed)
+	}()
+	return idleConnsClosed
 }
 
 // Authorization осуществляет авторизацию пользователя.
@@ -211,8 +228,6 @@ func (app *Application) ShortenHandler(responce http.ResponseWriter, request *ht
 				responce.WriteHeader(http.StatusConflict)
 			}
 			logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
-			app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
-
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write([]byte(body))
@@ -260,7 +275,6 @@ func (app *Application) ShortenJSONHandler(responce http.ResponseWriter, request
 			if err != nil {
 				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			}
-			app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write(body)
@@ -306,7 +320,6 @@ func (app *Application) ShortenBatchJSONHandler(responce http.ResponseWriter, re
 				resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: extURL})
 			}
 			body, _ = json.Marshal(resulturls)
-			app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write(body)

@@ -78,54 +78,20 @@ type (
 func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) (*Config, error) {
 	var err error
 	var r = Config{}
+
 	// Устанавливаем конфигурацию из переменных окружения
 	err = r.EnvConfigSet()
 	if err != nil {
 		logger.Log.Debug("", zap.String("Errors when setting startup parameters and environment variables", err.Error()))
 	}
+
 	// Устанавливаем конфигурацию из параметров запуска
 	r.ParseFlags()
-	// Проверяем есть ли в конфигурации файл с настройками JSON, если есть то читаем из него данные
-	var jscfg JSONConfigParse
-	if r.JSONConfigFile.String() != "" {
-		var err1 error
-		jscfg, err1 = r.GetConfigFromJSONFile()
+
+	// Заполняем параметры конфигурации не получившие значения из переменных среды или параметров запуска
+	err1 := r.SetConfigFromFileOrDefault(netAddressServerShortener, netAddressServerExpand, fileStoragePath, dbPath)
+	if err1 != nil {
 		err = errors.Join(err, err1)
-	}
-	// перебираем все параметры и если есть параметры без значений заполняем
-	// их данными изначально из файла настроек, затем из настроек по умолчанию
-	if r.NetAddressServerExpand.String() == "" {
-		if jscfg.ServerExpand != "" {
-			err = errors.Join(err, r.NetAddressServerExpand.Set(jscfg.ServerExpand))
-		} else {
-			err = errors.Join(err, r.NetAddressServerExpand.Set(netAddressServerExpand))
-		}
-	}
-	if r.NetAddressServerShortener.String() == "" {
-		if jscfg.ServerShortener != "" {
-			err = errors.Join(err, r.NetAddressServerShortener.Set(jscfg.ServerShortener))
-		} else {
-			err = errors.Join(err, r.NetAddressServerShortener.Set(netAddressServerShortener))
-		}
-	}
-	if r.FileStoragePath.String() == "" {
-		if jscfg.FileStoragePath != "" {
-			err = errors.Join(err, r.FileStoragePath.Set(jscfg.FileStoragePath))
-		} else {
-			err = errors.Join(err, r.FileStoragePath.Set(fileStoragePath))
-		}
-	}
-	if r.DatabaseDSN.String() == "" {
-		if jscfg.DatabaseDSN != "" {
-			err = errors.Join(err, r.DatabaseDSN.Set(jscfg.DatabaseDSN))
-		} else {
-			err = errors.Join(err, r.DatabaseDSN.Set(dbPath))
-		}
-	}
-	if r.EnableHTTPS.String() == "" {
-		if jscfg.EnableHTTPS != "" {
-			r.EnableHTTPS.On = true
-		}
 	}
 	return &r, err
 }
@@ -248,6 +214,56 @@ func (c *Config) EnvConfigSet() (err error) {
 		err = errors.Join(err, err1)
 	}
 	return
+}
+
+// SetConfigFromFileOrDefault заполняет параметры конфигурации не получившие значения из переменных среды или параметров запуска
+func (c *Config) SetConfigFromFileOrDefault(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) error {
+	var err error
+
+	// Проверяем есть ли в конфигурации файл с настройками JSON, если есть то читаем из него данные
+	var jscfg JSONConfigParse
+	if c.JSONConfigFile.String() != "" {
+		var err1 error
+		jscfg, err1 = c.GetConfigFromJSONFile()
+		err = errors.Join(err, err1)
+	}
+
+	// перебираем все параметры и если есть параметры без значений заполняем
+	// их данными изначально из файла настроек, затем из настроек по умолчанию
+	if c.NetAddressServerExpand.String() == "" {
+		if jscfg.ServerExpand != "" {
+			err = errors.Join(err, c.NetAddressServerExpand.Set(jscfg.ServerExpand))
+		} else {
+			err = errors.Join(err, c.NetAddressServerExpand.Set(netAddressServerExpand))
+		}
+	}
+	if c.NetAddressServerShortener.String() == "" {
+		if jscfg.ServerShortener != "" {
+			err = errors.Join(err, c.NetAddressServerShortener.Set(jscfg.ServerShortener))
+		} else {
+			err = errors.Join(err, c.NetAddressServerShortener.Set(netAddressServerShortener))
+		}
+	}
+	if c.FileStoragePath.String() == "" {
+		if jscfg.FileStoragePath != "" {
+			err = errors.Join(err, c.FileStoragePath.Set(jscfg.FileStoragePath))
+		} else {
+			err = errors.Join(err, c.FileStoragePath.Set(fileStoragePath))
+		}
+	}
+	if c.DatabaseDSN.String() == "" {
+		if jscfg.DatabaseDSN != "" {
+			err = errors.Join(err, c.DatabaseDSN.Set(jscfg.DatabaseDSN))
+		} else {
+			err = errors.Join(err, c.DatabaseDSN.Set(dbPath))
+		}
+	}
+	if c.EnableHTTPS.String() == "" {
+		if jscfg.EnableHTTPS != "" {
+			c.EnableHTTPS.On = true
+		}
+	}
+	return err
 }
 
 // GetConfigFromJSONFile импортирует настройки из файла конфигурации
