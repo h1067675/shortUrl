@@ -3,9 +3,10 @@ package grpcserver
 import (
 	"context"
 	"fmt"
-	pb "grpcserver/proto"
 	"log"
 	"net"
+
+	pb "github.com/h1067675/shortUrl/internal/grpcserver/proto"
 
 	"google.golang.org/grpc"
 )
