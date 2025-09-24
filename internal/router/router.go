@@ -20,6 +20,7 @@ type (
 		ExpandHandler(responce http.ResponseWriter, request *http.Request)
 		ExpandUserURLSHandler(responce http.ResponseWriter, request *http.Request)
 		DeleteUserURLSHandler(responce http.ResponseWriter, request *http.Request)
+		GetServerStats(responce http.ResponseWriter, request *http.Request)
 	}
 	// Router отвечает за маршрутизацию
 	Router struct {
@@ -59,6 +60,9 @@ func (r Router) RouterFunc(handlers Handler) chi.Router {
 		})
 		r.Route("/ping", func(r chi.Router) {
 			r.Get("/", handlers.CheckDBHandler) // GET запрос проверяет работоспособность базы данных
+		})
+		r.Route("/api/internal/stats", func(r chi.Router) {
+			r.Get("/", handlers.GetServerStats) // GET отдает статистику сервера
 		})
 	})
 	return r.Router

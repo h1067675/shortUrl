@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,6 +67,12 @@ type (
 	JsUserRequest struct {
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
+	}
+
+	// JsStat определяет фотмат выдачи статистики сервера
+	JsStat struct {
+		Users int `json:"users"`
+		URLS  int `json:"urls"`
 	}
 )
 
@@ -151,7 +158,7 @@ func (app *Application) waitSysSignals(server *http.Server) chan struct{} {
 	return idleConnsClosed
 }
 
-// Authorization осуществляет авторизацию пользователя.
+// Authorization mildware осуществляет авторизацию пользователя.
 func (app *Application) Authorization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		logger.Log.Debug("Handler Authorization")
@@ -350,7 +357,7 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 	responce.WriteHeader(http.StatusBadRequest)
 }
 
-// ExpandUserURLSHandler получает весь список сокращенных адресов пользователем прошедшив авторизацию.
+// ExpandUserURLSHandler получает весь список сокращенных адресов пользователем прошедшим авторизацию.
 func (app *Application) ExpandUserURLSHandler(responce http.ResponseWriter, request *http.Request) {
 	logger.Log.Debug("Handler ExpandUserURLSHandler")
 	var urls []JsUserRequest
@@ -412,4 +419,48 @@ func (app *Application) DeleteUserURLSHandler(responce http.ResponseWriter, requ
 		}
 	}
 	responce.WriteHeader(http.StatusBadRequest)
+}
+
+// GetServerStats показывает статистику сервера если X-Real-IP входит в доверенную подсеть.
+func (app *Application) GetServerStats(responce http.ResponseWriter, request *http.Request) {
+	logger.Log.Debug("Handler GetServerStats")
+	var err error
+	// проверяем установлена ли доверенная подсеть, если нет запрещаем доступ
+	if !app.Config.TrustedSubnet.Use {
+		responce.WriteHeader(http.StatusForbidden)
+		return
+	}
+	// берем ip пользователя из заголовка X-Real-IP и проверяем на вхождение его в доверенную подсеть
+	ip := net.ParseIP(request.Header.Get("X-Real-IP"))
+	if !app.Config.TrustedSubnet.Path.Contains(ip) {
+		responce.WriteHeader(http.StatusForbidden)
+		return
+	}
+	// запрашиваем статистику в хранилище
+	users, err := app.Storage.GetSumUsers()
+	if err != nil {
+		logger.Log.Error("Error get statistic", zap.Error(err))
+		responce.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	links, err := app.Storage.GetSumURLS()
+	if err != nil {
+		logger.Log.Error("Error get statistic", zap.Error(err))
+		responce.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// формируем ответ и отдаем пользователю
+	js := JsStat{
+		URLS:  links,
+		Users: users,
+	}
+	body, err := json.Marshal(js)
+	if err != nil {
+		logger.Log.Error("Error marshal JSON")
+		responce.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	responce.WriteHeader(http.StatusOK)
+	responce.Write(body)
 }

@@ -23,11 +23,12 @@ type (
 	Config struct {
 		NetAddressServerShortener NetAddressServer
 		NetAddressServerExpand    NetAddressServer
-		FileStoragePath           FilePath
-		DatabaseDSN               DatabasePath
+		FileStoragePath           StringPath
+		DatabaseDSN               StringPath
+		JSONConfigFile            StringPath
+		TrustedSubnet             StringCIDR
 		EnableHTTPS               EnableHTTPS
 		EnvConf                   EnvConfig
-		JSONConfigFile            FilePath
 	}
 
 	// NetAddressServer описывает формат сетевого адреса для получения переменной среды.
@@ -36,14 +37,15 @@ type (
 		Port int
 	}
 
-	// FilePath описывает формат пути к файлу сохранения для получения переменной среды.
-	FilePath struct {
+	// StringPath описывает строковое значение настройки.
+	StringPath struct {
 		Path string
 	}
 
-	// DatabasePath описывает формат адреса подключения к БД.
-	DatabasePath struct {
-		Path string
+	// StringCIDR описывает строковое значение настройки.
+	StringCIDR struct {
+		Path *net.IPNet
+		Use  bool
 	}
 
 	// EnableHTTPS определяет настройку использования HTTPS
@@ -58,6 +60,7 @@ type (
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		DatabaseDSN     string `env:"DATABASE_DSN"`
 		EnableHTTPS     string `env:"ENABLE_HTTPS"`
+		TrustedSubnet   string `env:"TRUSTED_SUBNET"`
 		JSONConfigFile  string `env:"CONFIG"`
 	}
 
@@ -66,6 +69,7 @@ type (
 		ServerExpand    string `json:"base_url"`
 		FileStoragePath string `json:"file_storage_path"`
 		DatabaseDSN     string `json:"database_dsn"`
+		TrustedSubnet   string `env:"trusted_subnet"`
 		EnableHTTPS     string `json:"enable_https"`
 	}
 )
@@ -93,6 +97,7 @@ func NewConfig(netAddressServerShortener string, netAddressServerExpand string, 
 	if err1 != nil {
 		err = errors.Join(err, err1)
 	}
+
 	return &r, err
 }
 
@@ -143,25 +148,30 @@ func (n *NetAddressServer) Set(s string) (err error) {
 }
 
 // Set сохраняет значение переменной среды.
-func (n *FilePath) Set(s string) (err error) {
+func (n *StringPath) Set(s string) (err error) {
 	n.Path = s
 	return nil
 }
 
 // String возвращает путь файла.
-func (n *FilePath) String() string {
+func (n *StringPath) String() string {
 	return n.Path
 }
 
-// Set cохраняет значение переменной среды.
-func (n *DatabasePath) Set(s string) (err error) {
-	n.Path = s
+// Set сохраняет значение переменной среды.
+func (n *StringCIDR) Set(s string) (err error) {
+	_, subnet, err := net.ParseCIDR(s)
+	if err != nil {
+		n.Use = false
+		return err
+	}
+	n.Path, n.Use = subnet, true
 	return nil
 }
 
-// String возвращает путь к базе данных.
-func (n *DatabasePath) String() string {
-	return n.Path
+// String возвращает путь файла.
+func (n *StringCIDR) String() string {
+	return n.Path.String()
 }
 
 // String возвращает путь файла.
@@ -180,6 +190,7 @@ func (c *Config) ParseFlags() {
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
 	flag.Var(&c.JSONConfigFile, "config", "Sets the path to the configuration file in JSON format")
 	flag.Var(&c.JSONConfigFile, "c", "reduction to -config flag")
+	flag.Var(&c.TrustedSubnet, "t", "Sets a trusted subnet for accessing server statistics")
 	flag.BoolVar(&c.EnableHTTPS.On, "e", false, "Enable HTTPS")
 	flag.Parse()
 }
