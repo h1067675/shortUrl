@@ -57,12 +57,11 @@ type (
 func (r *Router) RouterFunc(app Applicator) chi.Router {
 	// Создаем chi роутер
 	r.Router = chi.NewRouter()
+
 	// Добавляем все функции middleware
 	r.Router.Use(r.AuthorizationHandler)
 	r.Router.Use(compress.CompressHandle)
 	r.Router.Use(logger.RequestLogger)
-	// Добавляем связь с бизнес логикой
-	r.App = app
 
 	// Делаем маршрутизацию
 	r.Router.Route("/", func(c chi.Router) {
@@ -85,6 +84,10 @@ func (r *Router) RouterFunc(app Applicator) chi.Router {
 			c.Get("/", r.GetServerStatsHandler) // GET отдает статистику сервера
 		})
 	})
+
+	// Добавляем связь с бизнес логикой
+	r.App = app
+
 	return r.Router
 }
 
@@ -155,6 +158,9 @@ func (r *Router) AuthorizationHandler(next http.Handler) http.Handler {
 				http.SetCookie(response, cookie)
 				ctx = context.WithValue(request.Context(), keyUserID, userid)
 				ctx = context.WithValue(ctx, keyNewUser, true)
+			} else {
+				response.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		} else {
 			_, userid, err = r.App.Authorization(cookie.Value, true)
