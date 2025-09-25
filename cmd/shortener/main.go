@@ -15,7 +15,7 @@ import (
 
 	"github.com/h1067675/shortUrl/cmd/configsurl"
 	"github.com/h1067675/shortUrl/cmd/storage"
-	"github.com/h1067675/shortUrl/internal/handlers"
+	"github.com/h1067675/shortUrl/internal/app"
 	"github.com/h1067675/shortUrl/internal/logger"
 	"github.com/h1067675/shortUrl/internal/router"
 	"go.uber.org/zap"
@@ -68,14 +68,14 @@ func main() {
 	}
 
 	// Создаем соединение и маршрутизацию
-	var router router.Router
+	serverHTTP := router.New()
 
 	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
-	var application handlers.Application
-	application.New(st, conf, router)
+	var application app.Application
+	application.New(st, conf, serverHTTP)
 
 	// Запускаем сервер
-	application.StartServer()
+	application.StartServers()
 
 	// time.Sleep(10 * time.Second)
 	// // создаём файл журнала профилирования памяти

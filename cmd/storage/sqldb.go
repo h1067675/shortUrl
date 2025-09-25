@@ -215,6 +215,26 @@ func (s *Storage) getNewUserIDDB() (result int, err error) {
 	return result, nil
 }
 
+// getSumURLSDB получает количество сокращенных URL в базе данных
+func (s *Storage) getSumURLSDB() (result int, err error) {
+	row := s.DB.QueryRow("SELECT SUM(Id) FROM links;")
+	err = row.Scan(&result)
+	if err != nil {
+		return -1, err
+	}
+	return result, nil
+}
+
+// getSumURLSDB получает количество пользователей в базе данных
+func (s *Storage) getSumUsersDB() (result int, err error) {
+	row := s.DB.QueryRow("SELECT SUM(Id) FROM users;")
+	err = row.Scan(&result)
+	if err != nil {
+		return -1, err
+	}
+	return result, nil
+}
+
 // deleteFromDB удаляет ссылки пользователя из базы данных.
 func (s *Storage) deleteFromDB(chIn chan struct {
 	userID int
