@@ -190,18 +190,18 @@ func (app *Application) ShortenJSON(js []byte, userid int) (body []byte, statusC
 			return nil, http.StatusCreated
 		}
 		extURL, err1 := app.Storage.CreateShortURL(url.URL, app.Config.GetConfig().OuterAddress, userid)
-		if err1 != nil && !errors.Is(err, storage.ErrLinkExsist) {
+		if err1 != nil && !errors.Is(err1, storage.ErrLinkExsist) {
 			logger.Log.Error("Error to create short URL", zap.Error(err))
 			return nil, http.StatusInternalServerError
 		}
 		result := JsResponce{URL: extURL}
-		body, err1 = json.Marshal(result)
-		if err1 != nil {
+		body, err = json.Marshal(result)
+		if err != nil {
 			logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			return nil, http.StatusInternalServerError
 		}
 		logger.Log.Debug("Output JSON ", zap.String("", string(body)))
-		if errors.Is(err, storage.ErrLinkExsist) {
+		if errors.Is(err1, storage.ErrLinkExsist) {
 			return body, http.StatusConflict
 		}
 		return body, http.StatusCreated
