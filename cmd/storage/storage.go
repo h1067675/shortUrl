@@ -224,7 +224,7 @@ func (s *Storage) DeleteUserURLS(ids struct {
 
 	s.deleteFromDB(collectResultCh)
 
-	return errors.New("error of delete URLS")
+	return nil
 }
 
 // SaveToFile сохраняет хранилище переменной в файл.

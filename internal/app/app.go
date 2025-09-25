@@ -286,12 +286,12 @@ func (app *Application) DeleteUserURLS(js []byte, userid int) (statusCode int) {
 		}
 		ids.UserID = userid
 		if err := json.Unmarshal(js, &ids.LinksIDS); err != nil {
-			logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
+			logger.Log.Error("Error json parsing", zap.Error(err))
 			return http.StatusInternalServerError
 		}
 		err := app.Storage.DeleteUserURLS(ids)
 		if err != nil {
-			logger.Log.Error("Error delete URLS", zap.String("request body", string(js)))
+			logger.Log.Error("Error delete URLS", zap.Error(err))
 			return http.StatusInternalServerError
 		}
 		return http.StatusAccepted
