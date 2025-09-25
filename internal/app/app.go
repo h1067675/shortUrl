@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -182,24 +183,27 @@ func (app *Application) ShortenJSON(js []byte, userid int) (body []byte, statusC
 		logger.Log.Debug("Input JSON ", zap.String("", string(js)))
 		var url JsRequest
 		if err = json.Unmarshal(js, &url); err != nil {
-			logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
+			logger.Log.Debug("Error json parsing", zap.String("request body", string(js)))
 			return nil, http.StatusInternalServerError
 		}
 		if url.URL == "" {
 			return nil, http.StatusCreated
 		}
-		extURL, err := app.Storage.CreateShortURL(url.URL, app.Config.GetConfig().OuterAddress, userid)
-		if err != nil {
+		extURL, err1 := app.Storage.CreateShortURL(url.URL, app.Config.GetConfig().OuterAddress, userid)
+		if err1 != nil && !errors.Is(err, storage.ErrLinkExsist) {
 			logger.Log.Error("Error to create short URL", zap.Error(err))
-			return nil, http.StatusConflict
+			return nil, http.StatusInternalServerError
 		}
 		result := JsResponce{URL: extURL}
-		body, err = json.Marshal(result)
-		if err != nil {
+		body, err1 = json.Marshal(result)
+		if err1 != nil {
 			logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			return nil, http.StatusInternalServerError
 		}
 		logger.Log.Debug("Output JSON ", zap.String("", string(body)))
+		if errors.Is(err, storage.ErrLinkExsist) {
+			return body, http.StatusConflict
+		}
 		return body, http.StatusCreated
 	}
 	return nil, http.StatusBadRequest
