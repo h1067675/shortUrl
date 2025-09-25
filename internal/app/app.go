@@ -161,13 +161,14 @@ func (app *Application) CheckDB() (statuscode int) {
 // Shorten сокращает URL полученные в теле запроса POST, принимает text/plain, проверят Content-type, присваивает правильный Content-type ответу,
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
-func (app *Application) Shorten(url string, userid int) (body []byte, statusCode int) {
+func (app *Application) Shorten(url string, userid int) (body string, statusCode int) {
+	var err error
 	if len(url) > 0 {
-		body, err := app.Storage.CreateShortURL(string(url), app.Config.GetConfig().OuterAddress, userid)
+		body, err = app.Storage.CreateShortURL(string(url), app.Config.GetConfig().OuterAddress, userid)
 		if err != nil {
-			return nil, http.StatusConflict
+			return body, http.StatusConflict
 		}
-		logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
+		logger.Log.Debug("Result body", zap.String("short URL", body))
 	}
 	return body, http.StatusCreated
 }
@@ -205,6 +206,7 @@ func (app *Application) ShortenJSON(js []byte, userid int) (body []byte, statusC
 // записывает правильный статус в ответ, получает тело запроса и если оно не пустое, то запрашивает сокращенную ссылку
 // и возвращает ответ. Во всех иных случаях возвращает в ответе Bad request.
 func (app *Application) ShortenBatchJSON(js []byte, userid int) (body []byte, statusCode int) {
+	var err error
 	if len(js) > 0 {
 		var urls []JsBatchRequest
 		var resulturls []JsBatchResponce
@@ -219,7 +221,7 @@ func (app *Application) ShortenBatchJSON(js []byte, userid int) (body []byte, st
 			extURL, _ := app.Storage.CreateShortURL(e.URL, app.Config.GetConfig().OuterAddress, userid)
 			resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: extURL})
 		}
-		body, err := json.Marshal(resulturls)
+		body, err = json.Marshal(resulturls)
 		if err != nil {
 			logger.Log.Error("Error json serialization")
 			return nil, http.StatusInternalServerError
@@ -231,7 +233,7 @@ func (app *Application) ShortenBatchJSON(js []byte, userid int) (body []byte, st
 
 // ExpandHandler получет адрес по короткой ссылке из GET запроса.
 func (app *Application) Expand(shortCode string, userid int) (basedURL string, statusCode int) {
-	outURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+shortCode, userid)
+	basedURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+shortCode, userid)
 	if err == storage.ErrLinkDeleted {
 		logger.Log.Debug("URL has been deleted", zap.Error(err))
 		return "", http.StatusGone
@@ -239,8 +241,8 @@ func (app *Application) Expand(shortCode string, userid int) (basedURL string, s
 		logger.Log.Debug("Can't to get URL", zap.Error(err))
 		return "", http.StatusGone
 	}
-	logger.Log.Debug("URL expanded " + outURL)
-	return "", http.StatusTemporaryRedirect
+	logger.Log.Debug("URL expanded " + basedURL)
+	return basedURL, http.StatusTemporaryRedirect
 }
 
 // ExpandUserURLSHandler получает весь список сокращенных адресов пользователем прошедшим авторизацию.

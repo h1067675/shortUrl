@@ -27,7 +27,7 @@ type (
 	Applicator interface {
 		Authorization(cookie string, hasToken bool) (token string, userid int, err error)
 		CheckDB() (statuscode int)
-		Shorten(url string, userid int) (body []byte, statusCode int)
+		Shorten(url string, userid int) (body string, statusCode int)
 		ShortenJSON(js []byte, userid int) (body []byte, statusCode int)
 		ShortenBatchJSON(js []byte, userid int) (body []byte, statusCode int)
 		Expand(shortCode string, userid int) (basedURL string, statusCode int)
