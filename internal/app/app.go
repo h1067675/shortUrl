@@ -179,7 +179,7 @@ func (app *Application) Shorten(url string, userid int) (body string, statusCode
 func (app *Application) ShortenJSON(js []byte, userid int) (body []byte, statusCode int) {
 	var err error
 	if len(js) > 0 {
-		logger.Log.Error("Input JSON ", zap.String("", string(js)))
+		logger.Log.Debug("Input JSON ", zap.String("", string(js)))
 		var url JsRequest
 		if err = json.Unmarshal(js, &url); err != nil {
 			logger.Log.Error("Error json parsing", zap.String("request body", string(js)))
@@ -190,6 +190,7 @@ func (app *Application) ShortenJSON(js []byte, userid int) (body []byte, statusC
 		}
 		extURL, err := app.Storage.CreateShortURL(url.URL, app.Config.GetConfig().OuterAddress, userid)
 		if err != nil {
+			logger.Log.Error("Error to create short URL", zap.Error(err))
 			return nil, http.StatusConflict
 		}
 		result := JsResponce{URL: extURL}
@@ -198,7 +199,7 @@ func (app *Application) ShortenJSON(js []byte, userid int) (body []byte, statusC
 			logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			return nil, http.StatusInternalServerError
 		}
-		logger.Log.Error("Output JSON ", zap.String("", string(body)))
+		logger.Log.Debug("Output JSON ", zap.String("", string(body)))
 		return body, http.StatusCreated
 	}
 	return nil, http.StatusBadRequest
