@@ -145,7 +145,7 @@ func Test_shortenHandler(t *testing.T) {
 			body:  "http://ys.ru",
 			token: "",
 			want: want{
-				code:  201,
+				code:  409,
 				body:  "+",
 				token: "+",
 			},
