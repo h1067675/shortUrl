@@ -235,7 +235,8 @@ func (x *PingDBResponse) GetStatus() *Status {
 
 type User struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         int32                  `protobuf:"varint,1,opt,name=token,proto3" json:"token,omitempty"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Id            int32                  `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -270,9 +271,16 @@ func (*User) Descriptor() ([]byte, []int) {
 	return file_proto_grpcserver_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *User) GetToken() int32 {
+func (x *User) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *User) GetId() int32 {
+	if x != nil {
+		return x.Id
 	}
 	return 0
 }
@@ -765,6 +773,7 @@ type ExpandUserURLSResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Json          string                 `protobuf:"bytes,1,opt,name=json,proto3" json:"json,omitempty"`
 	Status        *Status                `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -809,6 +818,13 @@ func (x *ExpandUserURLSResponse) GetJson() string {
 func (x *ExpandUserURLSResponse) GetStatus() *Status {
 	if x != nil {
 		return x.Status
+	}
+	return nil
+}
+
+func (x *ExpandUserURLSResponse) GetUser() *User {
+	if x != nil {
+		return x.User
 	}
 	return nil
 }
@@ -1011,9 +1027,10 @@ const file_proto_grpcserver_proto_rawDesc = "" +
 	"\x06status\x18\x01 \x01(\x05R\x06status\"\x0f\n" +
 	"\rPingDBRequest\"<\n" +
 	"\x0ePingDBResponse\x12*\n" +
-	"\x06status\x18\x01 \x01(\v2\x12.grpcserver.StatusR\x06status\"\x1c\n" +
+	"\x06status\x18\x01 \x01(\v2\x12.grpcserver.StatusR\x06status\",\n" +
 	"\x04User\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\x05R\x05token\"\\\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\x05R\x02id\"\\\n" +
 	"\x0eShortenRequest\x12$\n" +
 	"\x04link\x18\x01 \x01(\v2\x10.grpcserver.LinkR\x04link\x12$\n" +
 	"\x04user\x18\x02 \x01(\v2\x10.grpcserver.UserR\x04user\"\x98\x01\n" +
@@ -1042,10 +1059,11 @@ const file_proto_grpcserver_proto_rawDesc = "" +
 	"\x06status\x18\x02 \x01(\v2\x12.grpcserver.StatusR\x06status\x12$\n" +
 	"\x04user\x18\x03 \x01(\v2\x10.grpcserver.UserR\x04user\"=\n" +
 	"\x15ExpandUserURLSRequest\x12$\n" +
-	"\x04user\x18\x01 \x01(\v2\x10.grpcserver.UserR\x04user\"X\n" +
+	"\x04user\x18\x01 \x01(\v2\x10.grpcserver.UserR\x04user\"~\n" +
 	"\x16ExpandUserURLSResponse\x12\x12\n" +
 	"\x04json\x18\x01 \x01(\tR\x04json\x12*\n" +
-	"\x06status\x18\x02 \x01(\v2\x12.grpcserver.StatusR\x06status\"Q\n" +
+	"\x06status\x18\x02 \x01(\v2\x12.grpcserver.StatusR\x06status\x12$\n" +
+	"\x04user\x18\x03 \x01(\v2\x10.grpcserver.UserR\x04user\"Q\n" +
 	"\x15DeleteUserURLSRequest\x12$\n" +
 	"\x04user\x18\x01 \x01(\v2\x10.grpcserver.UserR\x04user\x12\x12\n" +
 	"\x04json\x18\x02 \x01(\tR\x04json\"D\n" +
@@ -1055,7 +1073,7 @@ const file_proto_grpcserver_proto_rawDesc = "" +
 	"\x16GetServerStatsResponse\x12\x12\n" +
 	"\x04json\x18\x01 \x01(\tR\x04json\x12*\n" +
 	"\x06status\x18\x02 \x01(\v2\x12.grpcserver.StatusR\x06status2\x8a\x05\n" +
-	"\bShortUrl\x12?\n" +
+	"\bShortURL\x12?\n" +
 	"\x06PingDB\x12\x19.grpcserver.PingDBRequest\x1a\x1a.grpcserver.PingDBResponse\x12B\n" +
 	"\aShorten\x12\x1a.grpcserver.ShortenRequest\x1a\x1b.grpcserver.ShortenResponse\x12N\n" +
 	"\vShortenJSON\x12\x1e.grpcserver.ShortenJSONRequest\x1a\x1f.grpcserver.ShortenJSONResponse\x12]\n" +
@@ -1120,30 +1138,31 @@ var file_proto_grpcserver_proto_depIdxs = []int32{
 	5,  // 15: grpcserver.ExpandResponse.user:type_name -> grpcserver.User
 	5,  // 16: grpcserver.ExpandUserURLSRequest.user:type_name -> grpcserver.User
 	2,  // 17: grpcserver.ExpandUserURLSResponse.status:type_name -> grpcserver.Status
-	5,  // 18: grpcserver.DeleteUserURLSRequest.user:type_name -> grpcserver.User
-	2,  // 19: grpcserver.DeleteUserURLSResponse.status:type_name -> grpcserver.Status
-	2,  // 20: grpcserver.GetServerStatsResponse.status:type_name -> grpcserver.Status
-	3,  // 21: grpcserver.ShortUrl.PingDB:input_type -> grpcserver.PingDBRequest
-	6,  // 22: grpcserver.ShortUrl.Shorten:input_type -> grpcserver.ShortenRequest
-	8,  // 23: grpcserver.ShortUrl.ShortenJSON:input_type -> grpcserver.ShortenJSONRequest
-	10, // 24: grpcserver.ShortUrl.ShortenBatchJSON:input_type -> grpcserver.ShortenBatchJSONRequest
-	12, // 25: grpcserver.ShortUrl.Expand:input_type -> grpcserver.ExpandRequest
-	14, // 26: grpcserver.ShortUrl.ExpandUserURLS:input_type -> grpcserver.ExpandUserURLSRequest
-	16, // 27: grpcserver.ShortUrl.DeleteUserURLS:input_type -> grpcserver.DeleteUserURLSRequest
-	18, // 28: grpcserver.ShortUrl.GetServerStats:input_type -> grpcserver.GetServerStatsRequest
-	4,  // 29: grpcserver.ShortUrl.PingDB:output_type -> grpcserver.PingDBResponse
-	7,  // 30: grpcserver.ShortUrl.Shorten:output_type -> grpcserver.ShortenResponse
-	9,  // 31: grpcserver.ShortUrl.ShortenJSON:output_type -> grpcserver.ShortenJSONResponse
-	11, // 32: grpcserver.ShortUrl.ShortenBatchJSON:output_type -> grpcserver.ShortenBatchJSONResponse
-	13, // 33: grpcserver.ShortUrl.Expand:output_type -> grpcserver.ExpandResponse
-	15, // 34: grpcserver.ShortUrl.ExpandUserURLS:output_type -> grpcserver.ExpandUserURLSResponse
-	17, // 35: grpcserver.ShortUrl.DeleteUserURLS:output_type -> grpcserver.DeleteUserURLSResponse
-	19, // 36: grpcserver.ShortUrl.GetServerStats:output_type -> grpcserver.GetServerStatsResponse
-	29, // [29:37] is the sub-list for method output_type
-	21, // [21:29] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	5,  // 18: grpcserver.ExpandUserURLSResponse.user:type_name -> grpcserver.User
+	5,  // 19: grpcserver.DeleteUserURLSRequest.user:type_name -> grpcserver.User
+	2,  // 20: grpcserver.DeleteUserURLSResponse.status:type_name -> grpcserver.Status
+	2,  // 21: grpcserver.GetServerStatsResponse.status:type_name -> grpcserver.Status
+	3,  // 22: grpcserver.ShortURL.PingDB:input_type -> grpcserver.PingDBRequest
+	6,  // 23: grpcserver.ShortURL.Shorten:input_type -> grpcserver.ShortenRequest
+	8,  // 24: grpcserver.ShortURL.ShortenJSON:input_type -> grpcserver.ShortenJSONRequest
+	10, // 25: grpcserver.ShortURL.ShortenBatchJSON:input_type -> grpcserver.ShortenBatchJSONRequest
+	12, // 26: grpcserver.ShortURL.Expand:input_type -> grpcserver.ExpandRequest
+	14, // 27: grpcserver.ShortURL.ExpandUserURLS:input_type -> grpcserver.ExpandUserURLSRequest
+	16, // 28: grpcserver.ShortURL.DeleteUserURLS:input_type -> grpcserver.DeleteUserURLSRequest
+	18, // 29: grpcserver.ShortURL.GetServerStats:input_type -> grpcserver.GetServerStatsRequest
+	4,  // 30: grpcserver.ShortURL.PingDB:output_type -> grpcserver.PingDBResponse
+	7,  // 31: grpcserver.ShortURL.Shorten:output_type -> grpcserver.ShortenResponse
+	9,  // 32: grpcserver.ShortURL.ShortenJSON:output_type -> grpcserver.ShortenJSONResponse
+	11, // 33: grpcserver.ShortURL.ShortenBatchJSON:output_type -> grpcserver.ShortenBatchJSONResponse
+	13, // 34: grpcserver.ShortURL.Expand:output_type -> grpcserver.ExpandResponse
+	15, // 35: grpcserver.ShortURL.ExpandUserURLS:output_type -> grpcserver.ExpandUserURLSResponse
+	17, // 36: grpcserver.ShortURL.DeleteUserURLS:output_type -> grpcserver.DeleteUserURLSResponse
+	19, // 37: grpcserver.ShortURL.GetServerStats:output_type -> grpcserver.GetServerStatsResponse
+	30, // [30:38] is the sub-list for method output_type
+	22, // [22:30] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_proto_grpcserver_proto_init() }

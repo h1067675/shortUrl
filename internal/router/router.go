@@ -35,6 +35,11 @@ type (
 		DeleteUserURLS(js []byte, userid int) (statusCode int)
 		GetServerStats(ip net.IP) (body []byte, statusCode int)
 	}
+	// User
+	User struct {
+		Token string
+		Id    int
+	}
 	// Router отвечает за маршрутизацию
 	Router struct {
 		Server *http.Server
@@ -121,10 +126,18 @@ func (r *Router) StartServerHTTP(conf configsurl.Config) error {
 		}
 		r.Server.TLSConfig = manager.TLSConfig()
 		// Запускаем сервер с HTTPS
-		err = r.Server.ListenAndServeTLS("", "")
+		go func() {
+			if err = r.Server.ListenAndServeTLS("", ""); err != nil {
+				logger.Log.Debug("Error to start HTTP server", zap.Error(err))
+			}
+		}()
 	} else {
 		// Запускаем сервер через HTTP
-		err = r.Server.ListenAndServe()
+		go func() {
+			if err = r.Server.ListenAndServe(); err != nil {
+				logger.Log.Debug("Error to start HTTP server", zap.Error(err))
+			}
+		}()
 	}
 
 	if err != nil {
@@ -202,6 +215,7 @@ func (r *Router) ShortenHandler(responce http.ResponseWriter, request *http.Requ
 		}
 		logger.Log.Debug("Body", zap.String("request URL", string(url)))
 		// если тело запроса не пустое, то создаем сокращенный url и выводим в тело ответа
+
 		body, statusCode := r.App.Shorten(string(url), request.Context().Value(keyUserID).(int))
 
 		responce.WriteHeader(statusCode)
@@ -230,6 +244,7 @@ func (r *Router) ShortenJSONHandler(responce http.ResponseWriter, request *http.
 			return
 		}
 		logger.Log.Debug("Body", zap.String("type json", string(js)))
+
 		body, statusCode := r.App.ShortenJSON(js, request.Context().Value(keyUserID).(int))
 		responce.WriteHeader(statusCode)
 		responce.Write(body)
@@ -257,6 +272,7 @@ func (r *Router) ShortenBatchJSONHandler(responce http.ResponseWriter, request *
 			return
 		}
 		logger.Log.Debug("Body", zap.String("type json", string(js)))
+
 		body, statusCode := r.App.ShortenBatchJSON(js, request.Context().Value(keyUserID).(int))
 		responce.WriteHeader(statusCode)
 		responce.Write(body)
@@ -269,6 +285,7 @@ func (r *Router) ShortenBatchJSONHandler(responce http.ResponseWriter, request *
 func (r *Router) ExpandHandler(responce http.ResponseWriter, request *http.Request) {
 	logger.Log.Debug("Handler ExpandHandler")
 	if request.Method == http.MethodGet {
+
 		outURL, statusCode := r.App.Expand(request.URL.Path, request.Context().Value(keyUserID).(int))
 		if outURL != "" {
 			logger.Log.Debug("URL expanded " + outURL)
@@ -285,7 +302,8 @@ func (r *Router) ExpandUserURLSHandler(responce http.ResponseWriter, request *ht
 	logger.Log.Debug("Handler ExpandUserURLSHandler")
 	ctx := request.Context()
 	if request.Method == http.MethodGet {
-		body, statusCode := r.App.ExpandUserURLS(ctx.Value(keyUserID).(int), ctx.Value(keyNewUser) == true)
+
+		body, statusCode := r.App.ExpandUserURLS(request.Context().Value(keyUserID).(int), ctx.Value(keyNewUser) == true)
 		responce.Header().Add("Content-Type", "application/json")
 		responce.WriteHeader(statusCode)
 		responce.Write(body)

@@ -29,7 +29,7 @@ type (
 		Storage    *storage.Storage
 		Config     *configsurl.Config
 		ServerHTTP router.Router
-		ServerGRPC grpcserver.GrpcServer
+		ServerGRPC *grpcserver.GRPCServer
 	}
 
 	// JsBatchRequest определяет порядок разбора batch json запроса.
@@ -68,11 +68,11 @@ type (
 )
 
 // New задает зависимости между пакетами
-func (app *Application) New(s *storage.Storage, c *configsurl.Config, r router.Router) { //, g grpcserver.GrpcServer) {
+func (app *Application) New(s *storage.Storage, c *configsurl.Config, r router.Router, g *grpcserver.GRPCServer) {
 	app.Storage = s
 	app.Config = c
 	app.ServerHTTP = r
-	// app.ServerGRPC = g
+	app.ServerGRPC = g
 }
 
 // StartServer запускает серверы.
@@ -80,26 +80,34 @@ func (app *Application) StartServers() {
 	// Определяем HTTP сервер и указываем адрес и ручку
 	server := app.ServerHTTP.NewServerHTTP(*app.Config, app)
 
+	// Определяем gRPC сервер
+	gRPC := app.ServerGRPC.Register(*app.Config, app)
+
 	// Запускаем ожидание сигналов на завершение работы
-	idleConnsClosed := app.waitSysSignals(server)
+	idleConnsClosed := app.waitSysSignals(server, gRPC)
 
 	// Запускаем HTTP сервер
-	go app.ServerHTTP.StartServerHTTP(*app.Config)
+	app.ServerHTTP.StartServerHTTP(*app.Config)
+	// Запускаем gRPC сервер
+	app.ServerGRPC.StartServergRPC(app)
+	fmt.Printf("URL Shortener is running.\n")
 
 	// Ждем мягкого завершения работы сервера
 	<-idleConnsClosed
 
 	// Сохраняем хранилище из мапы в файл
 	app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
-	logger.Log.Info("Storage saved to " + app.Config.GetConfig().FileStoragePath)
+	logger.Log.Debug("Storage saved to " + app.Config.GetConfig().FileStoragePath)
+	fmt.Printf("Storage saved to %s.\n", app.Config.GetConfig().FileStoragePath)
 
 	// Сообщаем об окончании работы сервера
-	logger.Log.Info("Server has shutdown in graceful mode")
+	logger.Log.Debug("Server has shutdown in graceful mode")
+	fmt.Printf("Server has shutdown in graceful mode.\n")
 }
 
 // WaitSysSignals определяет логику для отслеживания сигналов завершения работы приложения и
 // реализует процесс мягкого завершения работы приложения.
-func (app *Application) waitSysSignals(server *http.Server) chan struct{} {
+func (app *Application) waitSysSignals(server *http.Server, gRPC *grpcserver.GRPCServer) chan struct{} {
 	// через этот канал сообщим основному потоку, что соединения закрыты
 	idleConnsClosed := make(chan struct{})
 	// канал для перенаправления прерываний
@@ -117,8 +125,18 @@ func (app *Application) waitSysSignals(server *http.Server) chan struct{} {
 
 		// получили сигнал, запускаем процедуру graceful shutdown сервера
 		if err := server.Shutdown(ctx); err != nil {
-			logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+			logger.Log.Debug(err.Error(), zap.String("http server address", app.Config.NetAddressServerShortener.String()))
 		}
+		logger.Log.Debug("HTTP server is stopped.")
+		fmt.Printf("HTTP server is stopped.\n")
+
+		// останавливаем gRPC сервер
+		gRPC.Server.Stop()
+		if err := gRPC.Listen.Close(); err != nil {
+			logger.Log.Debug(err.Error(), zap.String("gRPC server address", app.Config.GRPCServerShortener.String()))
+		}
+		logger.Log.Debug("gRPC server is stopped.")
+		fmt.Printf("gRPC server is stopped.\n")
 
 		// сообщаем основному потоку, что все сетевые соединения обработаны и закрыты
 		close(idleConnsClosed)

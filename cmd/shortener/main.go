@@ -16,6 +16,7 @@ import (
 	"github.com/h1067675/shortUrl/cmd/configsurl"
 	"github.com/h1067675/shortUrl/cmd/storage"
 	"github.com/h1067675/shortUrl/internal/app"
+	"github.com/h1067675/shortUrl/internal/grpcserver"
 	"github.com/h1067675/shortUrl/internal/logger"
 	"github.com/h1067675/shortUrl/internal/router"
 	"go.uber.org/zap"
@@ -48,13 +49,19 @@ func main() {
 	// }()
 
 	// Инициализируем логгер
-	err := logger.Initialize("debug")
+	err := logger.Initialize("info")
 	if err != nil {
 		fmt.Print(err)
 	}
 
 	// Устанавливаем настройки приложения по умолчанию
-	conf, err := configsurl.NewConfig("localhost:8080", "localhost:8080", "./storage.js", "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=disable")
+	conf, err := configsurl.NewConfig(
+		"localhost:8080",
+		"localhost:8080",
+		"localhost:8001",
+		"localhost:8001",
+		"./storage.js",
+		"host=127.0.0.1 port=5432 dbname=postgres user=postgres password=12345678 connect_timeout=10 sslmode=disable")
 	if err != nil {
 		logger.Log.Debug("Errors when configuring the server", zap.String("Error", err.Error()))
 	}
@@ -67,12 +74,13 @@ func main() {
 		st.RestoreFromfile(conf.FileStoragePath.Path)
 	}
 
-	// Создаем соединение и маршрутизацию
+	// Создаем соединенbz и маршрутизацию
 	serverHTTP := router.New()
+	servergRPC := grpcserver.New()
 
 	// запускаем бизнес-логику и помещвем в нее переменные хранения, конфигурации и маршрутизации
 	var application app.Application
-	application.New(st, conf, serverHTTP)
+	application.New(st, conf, serverHTTP, servergRPC)
 
 	// Запускаем сервер
 	application.StartServers()
