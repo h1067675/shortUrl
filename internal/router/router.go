@@ -35,11 +35,7 @@ type (
 		DeleteUserURLS(js []byte, userid int) (statusCode int)
 		GetServerStats(ip net.IP) (body []byte, statusCode int)
 	}
-	// User
-	User struct {
-		Token string
-		Id    int
-	}
+
 	// Router отвечает за маршрутизацию
 	Router struct {
 		Server *http.Server
