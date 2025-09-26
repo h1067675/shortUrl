@@ -44,7 +44,7 @@ func (s *Storage) PingDB() bool {
 
 // checkLinksDBTable проверяет наличие таблицы в базе данных.
 func (s *Storage) checkLinksDBTable() bool {
-	rows, err := s.DB.Query("SELECT * FROM links LIMIT 1;")
+	rows, err := s.DB.Query("SELECT * FROM SU_links LIMIT 1;")
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
 		return false
@@ -58,7 +58,7 @@ func (s *Storage) checkLinksDBTable() bool {
 
 // checkUsersDBTable проверяет наличие таблицы в базе данных.
 func (s *Storage) checkUsersDBTable() bool {
-	rows, err := s.DB.Query("SELECT * FROM users LIMIT 1;")
+	rows, err := s.DB.Query("SELECT * FROM SU_users LIMIT 1;")
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
 		return false
@@ -72,7 +72,7 @@ func (s *Storage) checkUsersDBTable() bool {
 
 // createLinksDBTable создает таблицу ссылок в базе данных.
 func (s *Storage) createLinksDBTable() bool {
-	_, err := s.DB.Exec(`CREATE TABLE links (
+	_, err := s.DB.Exec(`CREATE TABLE SU_links (
 		Id SERIAL PRIMARY KEY, 
 		InnerLink TEXT, 
 		OutterLink TEXT UNIQUE
@@ -86,14 +86,14 @@ func (s *Storage) createLinksDBTable() bool {
 // createUsersDBTables создает таблицы пользователей в базе данных.
 func (s *Storage) createUsersDBTables() bool {
 	var err error
-	_, err = s.DB.Exec(`CREATE TABLE users (
+	_, err = s.DB.Exec(`CREATE TABLE SU_users (
 		Id SERIAL PRIMARY KEY,
 		creation TIMESTAMP
 		);`)
 	if err != nil {
 		logger.Log.Debug("data base don't exist.", zap.Error(err))
 	}
-	_, err = s.DB.Exec(`CREATE TABLE users_links (
+	_, err = s.DB.Exec(`CREATE TABLE SU_users_links (
 		Id INTEGER,
 		LinkID INTEGER,
 		is_deleted BOOL
@@ -109,7 +109,7 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 	var linkid int
 	var err error
 	result = s.createShortCode(adr)
-	_, err = s.DB.Exec("INSERT INTO links (InnerLink, OutterLink) VALUES ($1, $2);", result, url)
+	_, err = s.DB.Exec("INSERT INTO SU_links (InnerLink, OutterLink) VALUES ($1, $2);", result, url)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
@@ -119,12 +119,12 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 			return "", err
 		}
 	}
-	row := s.DB.QueryRow("SELECT Id, InnerLink FROM links WHERE OutterLink = $1;", url)
+	row := s.DB.QueryRow("SELECT Id, InnerLink FROM SU_links WHERE OutterLink = $1;", url)
 	err = row.Scan(&linkid, &result)
 	if err != nil {
 		return "", err
 	}
-	_, err = s.DB.Exec("INSERT INTO users_links (Id, LinkId) VALUES ($1, $2);", userid, linkid)
+	_, err = s.DB.Exec("INSERT INTO SU_users_links (Id, LinkId) VALUES ($1, $2);", userid, linkid)
 	if err != nil {
 		return "", err
 	}
@@ -134,14 +134,14 @@ func (s *Storage) saveShortURLBD(url string, adr string, userid int) (result str
 
 // getURLBD получает внешний URL по короткому URL из базы данных.
 func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
-	row := s.DB.QueryRow("SELECT OutterLink, Id FROM links WHERE InnerLink = $1;", url)
+	row := s.DB.QueryRow("SELECT OutterLink, Id FROM SU_links WHERE InnerLink = $1;", url)
 	var linkID int
 	err = row.Scan(&res, &linkID)
 	if err != nil {
 		logger.Log.Debug("error on get link from DB")
 		return
 	}
-	row = s.DB.QueryRow("SELECT is_deleted FROM users_links WHERE LinkId = $1 AND Id = $2;", linkID, userid)
+	row = s.DB.QueryRow("SELECT is_deleted FROM SU_users_links WHERE LinkId = $1 AND Id = $2;", linkID, userid)
 	var del *bool
 	err = row.Scan(&del)
 	if del != nil {
@@ -149,7 +149,7 @@ func (s *Storage) getURLBD(url string, userid int) (res string, err error) {
 		return res, ErrLinkDeleted
 	}
 	if err != nil {
-		logger.Log.Debug("error on chekker to deleted with a query", zap.String("SELECT", fmt.Sprintf("SELECT is_deleted FROM users_links WHERE LinkId = %v AND Id = %v;", linkID, userid)))
+		logger.Log.Debug("error on chekker to deleted with a query", zap.String("SELECT", fmt.Sprintf("SELECT is_deleted FROM SU_users_links WHERE LinkId = %v AND Id = %v;", linkID, userid)))
 		return res, nil
 	}
 	return
@@ -160,7 +160,7 @@ func (s *Storage) getUserURLBD(id int) (result []struct {
 	ShortURL string
 	URL      string
 }, err error) {
-	rows, err := s.DB.Query("SELECT InnerLink, OutterLink FROM links WHERE Id IN (SELECT LinkId FROM users_links WHERE Id = $1);", id)
+	rows, err := s.DB.Query("SELECT InnerLink, OutterLink FROM SU_links WHERE Id IN (SELECT LinkId FROM SU_users_links WHERE Id = $1);", id)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (s Storage) getUserURLByShortLink(userID int, shortLink string) int {
 	if userID < 1 || shortLink == "" || len(shortLink) < 8 {
 		return -1
 	}
-	row := s.DB.QueryRow("SELECT linkid FROM users_links WHERE linkid IN (SELECT Id FROM links WHERE InnerLink LIKE '%' || $1) AND id = $2;", shortLink, userID)
+	row := s.DB.QueryRow("SELECT linkid FROM SU_users_links WHERE linkid IN (SELECT Id FROM SU_links WHERE InnerLink LIKE '%' || $1) AND id = $2;", shortLink, userID)
 	var id int
 	err := row.Scan(&id)
 	if err != nil {
@@ -203,11 +203,31 @@ func (s Storage) getUserURLByShortLink(userID int, shortLink string) int {
 
 // getNewUserIDDB получает ID нового пользователя.
 func (s *Storage) getNewUserIDDB() (result int, err error) {
-	_, err = s.DB.Exec("INSERT INTO users (creation) VALUES (current_timestamp);")
+	_, err = s.DB.Exec("INSERT INTO SU_users (creation) VALUES (current_timestamp);")
 	if err != nil {
 		return -1, err
 	}
-	row := s.DB.QueryRow("SELECT MAX(Id) FROM users;")
+	row := s.DB.QueryRow("SELECT MAX(Id) FROM SU_users;")
+	err = row.Scan(&result)
+	if err != nil {
+		return -1, err
+	}
+	return result, nil
+}
+
+// getSumURLSDB получает количество сокращенных URL в базе данных
+func (s *Storage) getSumURLSDB() (result int, err error) {
+	row := s.DB.QueryRow("SELECT SUM(Id) FROM SU_links;")
+	err = row.Scan(&result)
+	if err != nil {
+		return -1, err
+	}
+	return result, nil
+}
+
+// getSumURLSDB получает количество пользователей в базе данных
+func (s *Storage) getSumUsersDB() (result int, err error) {
+	row := s.DB.QueryRow("SELECT SUM(Id) FROM SU_users;")
 	err = row.Scan(&result)
 	if err != nil {
 		return -1, err
@@ -236,8 +256,8 @@ func (s *Storage) deleteFromDB(chIn chan struct {
 	}()
 	for ch := range chIn {
 		if ch.linkID > 0 {
-			_, err = tx.Exec("UPDATE users_links SET is_deleted = TRUE WHERE Id = $1 AND LinkId = $2", ch.userID, ch.linkID)
-			logger.Log.Debug("DB query ", zap.String("UPDATE", fmt.Sprintf("UPDATE users_links SET is_deleted = TRUE WHERE Id = %v AND LinkId = %v", ch.userID, ch.linkID)))
+			_, err = tx.Exec("UPDATE SU_users_links SET is_deleted = TRUE WHERE Id = $1 AND LinkId = $2", ch.userID, ch.linkID)
+			logger.Log.Debug("DB query ", zap.String("UPDATE", fmt.Sprintf("UPDATE SU_users_links SET is_deleted = TRUE WHERE Id = %v AND LinkId = %v", ch.userID, ch.linkID)))
 			if err != nil {
 				// если ошибка, то откатываем изменения
 				_ = tx.Rollback()
@@ -263,7 +283,7 @@ func (s *Storage) GetDB() (result struct {
 	}
 }, err error) {
 	var rows *sql.Rows
-	rows, err = s.DB.Query("SELECT InnerLink, OutterLink, Id FROM links;")
+	rows, err = s.DB.Query("SELECT InnerLink, OutterLink, Id FROM SU_links;")
 	if err != nil {
 		return result, err
 	}
@@ -288,7 +308,7 @@ func (s *Storage) GetDB() (result struct {
 			IDLink:     idlink,
 		})
 	}
-	rows, err = s.DB.Query("SELECT Id, creation FROM users;")
+	rows, err = s.DB.Query("SELECT Id, creation FROM SU_users;")
 	if err != nil {
 		return result, err
 	}
@@ -310,7 +330,7 @@ func (s *Storage) GetDB() (result struct {
 			dt: cr,
 		})
 	}
-	rows, err = s.DB.Query("SELECT Id, LinkID FROM users_links;")
+	rows, err = s.DB.Query("SELECT Id, LinkID FROM SU_users_links;")
 	if err != nil {
 		return result, err
 	}
