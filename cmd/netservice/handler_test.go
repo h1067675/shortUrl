@@ -101,8 +101,10 @@ func (c *Cnfg) GetConfig() struct {
 	ServerAddress   string
 	OuterAddress    string
 	FileStoragePath string
+
 	DatabasePath    string
-} {
+}
+{
 	return struct {
 		ServerAddress   string
 		OuterAddress    string

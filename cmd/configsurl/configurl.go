@@ -36,7 +36,6 @@ type FilePath struct {
 type DatabasePath struct {
 	Path string
 }
-
 // Структура описывающая название переменных среды
 type EnvConfig struct {
 	ServerShortener string `env:"SERVER_ADDRESS"`
@@ -124,7 +123,6 @@ func (n *FilePath) Set(s string) (err error) {
 func (n *FilePath) String() string {
 	return n.Path
 }
-
 // Сохраняет значение переменной среды
 func (n *DatabasePath) Set(s string) (err error) {
 	n.Path = s
@@ -135,7 +133,6 @@ func (n *DatabasePath) Set(s string) (err error) {
 func (n *DatabasePath) String() string {
 	return n.Path
 }
-
 // разбираем атрибуты командной строки
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
@@ -164,6 +161,7 @@ func (c *Config) EnvConfigSet() {
 	fmt.Print(c.EnvConf.DatabaseDSN)
 	if c.EnvConf.DatabaseDSN != "" {
 		c.DatabaseDSN.Set(c.EnvConf.DatabaseDSN)
+
 	}
 }
 
@@ -188,5 +186,4 @@ func (c *Config) GetConfig() struct {
 	}{ServerAddress: c.NetAddressServerShortener.String(),
 		OuterAddress:    c.NetAddressServerExpand.String(),
 		FileStoragePath: c.FileStoragePath.Path,
-		DatabasePath:    c.DatabaseDSN.Path}
 }

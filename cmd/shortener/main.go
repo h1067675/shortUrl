@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+
 	// Инициализируем логгер
 	logger.Initialize("debug")
 	// Устанавливаем настройки приложения по умолчанию
@@ -22,6 +23,7 @@ func main() {
 	}
 	// Создаем соединение и помещвем в него переменные хранения и конфигурации
 	var conn = netservice.NewConnect(storage, conf)
+
 	// Запускаем сервер
 	conn.StartServer()
 }

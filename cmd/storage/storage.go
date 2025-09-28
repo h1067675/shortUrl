@@ -224,6 +224,7 @@ func (s *Storage) SaveToFile(file string) {
 	st := []StorageJSON{}
 	for i, e := range s.InnerLinks {
 		st = append(st, StorageJSON{i, e, s.UsersLinks[i]})
+
 	}
 	tf, err := json.Marshal(st)
 	if err != nil {
