@@ -20,6 +20,7 @@ const (
 	keyUserToken
 )
 
+// типы данных
 type (
 	// Handler связывает с хэндлерами
 	Applicator interface {
@@ -210,6 +211,7 @@ func (g *GRPCServer) Register(conf configsurl.Config, app Applicator) *GRPCServe
 	return g
 }
 
+// StartServergRPC запускает сервер gRPC
 func (g *GRPCServer) StartServergRPC(app Applicator) error {
 	g.ShortURL.App = app
 	go func() {

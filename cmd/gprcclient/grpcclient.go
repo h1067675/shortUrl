@@ -32,6 +32,7 @@ func (g *GRPCClient) SetNetAddressServer(netAddressServer string) *GRPCClient {
 	return g
 }
 
+// StartgRCPClient осуществляет соединение с gRPC сервером
 func (g *GRPCClient) StartgRCPClient() {
 	// Устанавливаем настройки клиента
 	if g.GRPCServerShortener == "" {
@@ -48,18 +49,7 @@ func (g *GRPCClient) StartgRCPClient() {
 	g.Client = pb.NewShortURLClient(conn)
 }
 
-func NewCon() pb.ShortURLClient {
-	// устанавливаем соединение с сервером
-	conn, err := grpc.NewClient("localhost:8001", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	// получаем переменную интерфейсного типа UsersClient,
-	// через которую будем отправлять сообщения
-	c := pb.NewShortURLClient(conn)
-	return c
-}
-
+// Shorten реализует запрос к хэндлеру Shorten
 func (g *GRPCClient) Shorten(tokenin string, url string) (tokenout string, body string, statusCode int) {
 	link := &pb.Link{Url: url}
 	user := &pb.User{Token: tokenin}
@@ -75,6 +65,7 @@ func (g *GRPCClient) Shorten(tokenin string, url string) (tokenout string, body 
 	return
 }
 
+// ShortenJSON реализует запрос к хэндлеру ShortenJSON
 func (g *GRPCClient) ShortenJSON(tokenin string, js string) (tokenout string, body string, statusCode int) {
 	user := &pb.User{Token: tokenin}
 
@@ -88,6 +79,8 @@ func (g *GRPCClient) ShortenJSON(tokenin string, js string) (tokenout string, bo
 	tokenout = resp.User.Token
 	return
 }
+
+// ShortenBatchJSON реализует запрос к хэндлеру ShortenBatchJSON
 func (g *GRPCClient) ShortenBatchJSON(tokenin string, js string) (tokenout string, body string, statusCode int) {
 	user := &pb.User{Token: tokenin}
 
@@ -102,6 +95,7 @@ func (g *GRPCClient) ShortenBatchJSON(tokenin string, js string) (tokenout strin
 	return
 }
 
+// Expand реализует запрос к хэндлеру Expand
 func (g *GRPCClient) Expand(url string) (tokenout string, body string, statusCode int) {
 
 	resp, err := g.Client.Expand(context.Background(), &pb.ExpandRequest{Shortlink: &pb.ShortLink{Shortlink: url}})
@@ -115,6 +109,7 @@ func (g *GRPCClient) Expand(url string) (tokenout string, body string, statusCod
 	return
 }
 
+// ExpandUserURLS реализует запрос к хэндлеру ExpandUserURLS
 func (g *GRPCClient) ExpandUserURLS(tokenin string, newuser bool) (tokenout string, body string, statusCode int) {
 	user := &pb.User{Token: tokenin}
 
@@ -129,6 +124,7 @@ func (g *GRPCClient) ExpandUserURLS(tokenin string, newuser bool) (tokenout stri
 	return
 }
 
+// DeleteUserURLS реализует запрос к хэндлеру DeleteUserURLS
 func (g *GRPCClient) DeleteUserURLS(tokenin string, js string) (statusCode int) {
 	user := &pb.User{Token: tokenin}
 
@@ -141,6 +137,7 @@ func (g *GRPCClient) DeleteUserURLS(tokenin string, js string) (statusCode int) 
 	return
 }
 
+// GetServerStats реализует запрос к хэндлеру GetServerStats
 func (g *GRPCClient) GetServerStats() (body string, statusCode int) {
 	resp, err := g.Client.GetServerStats(context.Background(), &pb.GetServerStatsRequest{})
 	if err != nil {

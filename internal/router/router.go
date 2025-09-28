@@ -92,11 +92,13 @@ func (r *Router) RouterFunc(app Applicator) chi.Router {
 	return r.Router
 }
 
+// New возвращает Router
 func New() Router {
 	var r Router
 	return r
 }
 
+// NewServerHTTP инициализирует HTTP сервер
 func (r *Router) NewServerHTTP(conf configsurl.Config, app Applicator) *http.Server {
 	// Определяем HTTP сервер и указываем адрес и ручку
 	r.Server = &http.Server{
@@ -107,6 +109,7 @@ func (r *Router) NewServerHTTP(conf configsurl.Config, app Applicator) *http.Ser
 	return r.Server
 }
 
+// StartServerHTTP запускает HTTP сервер
 func (r *Router) StartServerHTTP(conf configsurl.Config) error {
 	var err error
 	// Определяем порядок работы сервера через HTTPS или HTTP.
