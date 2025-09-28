@@ -2,6 +2,7 @@ package netservice
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/h1067675/shortUrl/cmd/storage"
 	"github.com/h1067675/shortUrl/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,12 +36,15 @@ type test struct {
 	want         want
 }
 type TestStorage struct {
+	storage.Storager
 	InnerLinks  map[string]string
 	OutterLinks map[string]string
+	Users       map[int][]string
+	UsersLinks  map[string][]int
 	Test        test
 }
 
-func (s *TestStorage) CreateShortURL(url string, adr string) (string, error) {
+func (s *TestStorage) CreateShortURL(url string, adr string, userid int) (string, error) {
 	val, ok := s.OutterLinks[url]
 	if ok {
 		return val, nil
@@ -49,7 +54,7 @@ func (s *TestStorage) CreateShortURL(url string, adr string) (string, error) {
 	s.InnerLinks[result] = url
 	return result, nil
 }
-func (s *TestStorage) GetURL(url string) (l string, e error) {
+func (s *TestStorage) GetURL(url string, userid int) (l string, e error) {
 	l, ok := s.InnerLinks[url]
 	if ok {
 		return l, nil
@@ -64,6 +69,15 @@ func (s *TestStorage) SaveToFile(file string) {
 }
 func (s *TestStorage) PingDB() bool {
 	return false
+}
+func (s *TestStorage) GetNewUserID() (int, error) {
+	return 1, nil
+}
+func (s *TestStorage) GetUserURLS(id int) (result []struct {
+	ShortURL string
+	URL      string
+}, err error) {
+	return nil, nil
 }
 
 type NetAddressServer struct {
@@ -203,7 +217,8 @@ func Test_shortenHandler(t *testing.T) {
 			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
-			h.ServeHTTP(w, request)
+			ctx := context.WithValue(request.Context(), keyUserID, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
 			resp := w.Result()
 			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
@@ -283,7 +298,9 @@ func Test_shortenJsonHandler(t *testing.T) {
 			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
-			h.ServeHTTP(w, request)
+
+			ctx := context.WithValue(request.Context(), keyUserID, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
 			resp := w.Result()
 			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
@@ -368,7 +385,8 @@ func Test_expand(t *testing.T) {
 			// request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 			// rctx.URLParams.Add("name", "joe")
 			w := httptest.NewRecorder()
-			h.ServeHTTP(w, request)
+			ctx := context.WithValue(request.Context(), keyUserID, 1)
+			h.ServeHTTP(w, request.WithContext(ctx))
 			resp := w.Result()
 			defer resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
@@ -377,7 +395,7 @@ func Test_expand(t *testing.T) {
 			require.NoError(t, err)
 			request2.Header.Add("Content-Type", test.contentType)
 			w2 := httptest.NewRecorder()
-			h2.ServeHTTP(w2, request2)
+			h2.ServeHTTP(w2, request2.WithContext(ctx))
 			resp2 := w2.Result()
 			defer resp2.Body.Close()
 			// проверяем код ответа
