@@ -138,6 +138,32 @@ func (s *Storage) GetNewUserID() (result int, err error) {
 	return result, nil
 }
 
+// GetSumURLS запрашивает в хранилище количество сокращенных URL.
+func (s *Storage) GetSumURLS() (result int, err error) {
+	if s.DB.Connected {
+		result, err = s.getSumURLSDB()
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		result = len(s.InnerLinks)
+	}
+	return result, nil
+}
+
+// GetSumUsers запрашивает в хранилище количество пользователей.
+func (s *Storage) GetSumUsers() (result int, err error) {
+	if s.DB.Connected {
+		result, err = s.getSumUsersDB()
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		result = len(s.Users)
+	}
+	return result, nil
+}
+
 // GetURL получает коротную ссылку и проверяет наличие ее в "базе данных" если существует, то возвращяет ее
 // если нет, то возвращает ошибку.
 func (s *Storage) GetURL(url string, userid int) (l string, e error) {
@@ -198,7 +224,7 @@ func (s *Storage) DeleteUserURLS(ids struct {
 
 	s.deleteFromDB(collectResultCh)
 
-	return errors.New("error of delete URLS")
+	return nil
 }
 
 // SaveToFile сохраняет хранилище переменной в файл.
