@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/h1067675/shortUrl/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
 func createRandURL() string {
