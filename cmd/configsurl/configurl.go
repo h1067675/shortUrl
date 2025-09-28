@@ -23,11 +23,14 @@ type (
 	Config struct {
 		NetAddressServerShortener NetAddressServer
 		NetAddressServerExpand    NetAddressServer
-		FileStoragePath           FilePath
-		DatabaseDSN               DatabasePath
+		GRPCServerShortener       NetAddressServer
+		GRPCServerExpand          NetAddressServer
+		FileStoragePath           StringPath
+		DatabaseDSN               StringPath
+		JSONConfigFile            StringPath
+		TrustedSubnet             StringCIDR
 		EnableHTTPS               EnableHTTPS
 		EnvConf                   EnvConfig
-		JSONConfigFile            FilePath
 	}
 
 	// NetAddressServer описывает формат сетевого адреса для получения переменной среды.
@@ -36,14 +39,15 @@ type (
 		Port int
 	}
 
-	// FilePath описывает формат пути к файлу сохранения для получения переменной среды.
-	FilePath struct {
+	// StringPath описывает строковое значение настройки.
+	StringPath struct {
 		Path string
 	}
 
-	// DatabasePath описывает формат адреса подключения к БД.
-	DatabasePath struct {
-		Path string
+	// StringCIDR описывает строковое значение настройки.
+	StringCIDR struct {
+		Path *net.IPNet
+		Use  bool
 	}
 
 	// EnableHTTPS определяет настройку использования HTTPS
@@ -53,20 +57,26 @@ type (
 
 	// EnvConfig описывает название переменных среды.
 	EnvConfig struct {
-		ServerShortener string `env:"SERVER_ADDRESS"`
-		ServerExpand    string `env:"BASE_URL"`
-		FileStoragePath string `env:"FILE_STORAGE_PATH"`
-		DatabaseDSN     string `env:"DATABASE_DSN"`
-		EnableHTTPS     string `env:"ENABLE_HTTPS"`
-		JSONConfigFile  string `env:"CONFIG"`
+		ServerShortener     string `env:"SERVER_ADDRESS"`
+		ServerExpand        string `env:"BASE_URL"`
+		FileStoragePath     string `env:"FILE_STORAGE_PATH"`
+		DatabaseDSN         string `env:"DATABASE_DSN"`
+		EnableHTTPS         string `env:"ENABLE_HTTPS"`
+		TrustedSubnet       string `env:"TRUSTED_SUBNET"`
+		JSONConfigFile      string `env:"CONFIG"`
+		GRPCServerShortener string `env:"GRPC_ADDRESS"`
+		GRPCServerExpand    string `env:"GRPC_BASE_URL"`
 	}
 
 	JSONConfigParse struct {
-		ServerShortener string `json:"server_address"`
-		ServerExpand    string `json:"base_url"`
-		FileStoragePath string `json:"file_storage_path"`
-		DatabaseDSN     string `json:"database_dsn"`
-		EnableHTTPS     string `json:"enable_https"`
+		ServerShortener     string `json:"server_address"`
+		ServerExpand        string `json:"base_url"`
+		FileStoragePath     string `json:"file_storage_path"`
+		DatabaseDSN         string `json:"database_dsn"`
+		TrustedSubnet       string `json:"trusted_subnet"`
+		EnableHTTPS         string `json:"enable_https"`
+		GRPCServerShortener string `json:"grpc_address"`
+		GRPCServerExpand    string `json:"grpc_base_url"`
 	}
 )
 
@@ -75,59 +85,30 @@ type (
 //  2. Переменные среды
 //  3. Файл конфигурации
 //  4. Настройки по умолчанию
-func NewConfig(netAddressServerShortener string, netAddressServerExpand string, fileStoragePath string, dbPath string) (*Config, error) {
+func NewConfig(netAddressServerShortener string,
+	netAddressServerExpand string,
+	gRPCAddressServerShortener string,
+	gRPCAddressServerExpand string,
+	fileStoragePath string,
+	dbPath string) (*Config, error) {
 	var err error
 	var r = Config{}
+
 	// Устанавливаем конфигурацию из переменных окружения
 	err = r.EnvConfigSet()
 	if err != nil {
 		logger.Log.Debug("", zap.String("Errors when setting startup parameters and environment variables", err.Error()))
 	}
+
 	// Устанавливаем конфигурацию из параметров запуска
 	r.ParseFlags()
-	// Проверяем есть ли в конфигурации файл с настройками JSON, если есть то читаем из него данные
-	var jscfg JSONConfigParse
-	if r.JSONConfigFile.String() != "" {
-		var err1 error
-		jscfg, err1 = r.GetConfigFromJSONFile()
+
+	// Заполняем параметры конфигурации не получившие значения из переменных среды или параметров запуска
+	err1 := r.SetConfigFromFileOrDefault(netAddressServerShortener, netAddressServerExpand, gRPCAddressServerShortener, gRPCAddressServerExpand, fileStoragePath, dbPath)
+	if err1 != nil {
 		err = errors.Join(err, err1)
 	}
-	// перебираем все параметры и если есть параметры без значений заполняем
-	// их данными изначально из файла настроек, затем из настроек по умолчанию
-	if r.NetAddressServerExpand.String() == "" {
-		if jscfg.ServerExpand != "" {
-			err = errors.Join(err, r.NetAddressServerExpand.Set(jscfg.ServerExpand))
-		} else {
-			err = errors.Join(err, r.NetAddressServerExpand.Set(netAddressServerExpand))
-		}
-	}
-	if r.NetAddressServerShortener.String() == "" {
-		if jscfg.ServerShortener != "" {
-			err = errors.Join(err, r.NetAddressServerShortener.Set(jscfg.ServerShortener))
-		} else {
-			err = errors.Join(err, r.NetAddressServerShortener.Set(netAddressServerShortener))
-		}
-	}
-	if r.FileStoragePath.String() == "" {
-		if jscfg.FileStoragePath != "" {
-			err = errors.Join(err, r.FileStoragePath.Set(jscfg.FileStoragePath))
-		} else {
-			err = errors.Join(err, r.FileStoragePath.Set(fileStoragePath))
-		}
-	}
-	if r.DatabaseDSN.String() == "" {
-		if jscfg.DatabaseDSN != "" {
-			err = errors.Join(err, r.DatabaseDSN.Set(jscfg.DatabaseDSN))
-		} else {
-			err = errors.Join(err, r.DatabaseDSN.Set(dbPath))
-		}
-	}
-	if r.EnableHTTPS.String() == "" {
-		if jscfg.EnableHTTPS != "" {
-			r.EnableHTTPS.On = true
-		}
-	}
-	err = errors.Join(err, r.DatabaseDSN.Set(dbPath))
+
 	return &r, err
 }
 
@@ -178,25 +159,30 @@ func (n *NetAddressServer) Set(s string) (err error) {
 }
 
 // Set сохраняет значение переменной среды.
-func (n *FilePath) Set(s string) (err error) {
+func (n *StringPath) Set(s string) (err error) {
 	n.Path = s
 	return nil
 }
 
 // String возвращает путь файла.
-func (n *FilePath) String() string {
+func (n *StringPath) String() string {
 	return n.Path
 }
 
-// Set cохраняет значение переменной среды.
-func (n *DatabasePath) Set(s string) (err error) {
-	n.Path = s
+// Set сохраняет значение переменной среды.
+func (n *StringCIDR) Set(s string) (err error) {
+	_, subnet, err := net.ParseCIDR(s)
+	if err != nil {
+		n.Use = false
+		return err
+	}
+	n.Path, n.Use = subnet, true
 	return nil
 }
 
-// String возвращает путь к базе данных.
-func (n *DatabasePath) String() string {
-	return n.Path
+// String возвращает путь файла.
+func (n *StringCIDR) String() string {
+	return n.Path.String()
 }
 
 // String возвращает путь файла.
@@ -211,11 +197,14 @@ func (n *EnableHTTPS) String() string {
 func (c *Config) ParseFlags() {
 	flag.Var(&c.NetAddressServerShortener, "a", "Net address shortener service (host:port)")
 	flag.Var(&c.NetAddressServerExpand, "b", "Net address expand service (host:port)")
+	flag.Var(&c.GRPCServerShortener, "g", "Net address gRPC shortener service (host:port)")
+	flag.Var(&c.GRPCServerExpand, "h", "Net address gRPC expand service (host:port)")
 	flag.Var(&c.FileStoragePath, "f", "File storage path")
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
 	flag.Var(&c.JSONConfigFile, "config", "Sets the path to the configuration file in JSON format")
 	flag.Var(&c.JSONConfigFile, "c", "reduction to -config flag")
-	flag.BoolVar(&c.EnableHTTPS.On, "t", false, "Enable HTTPS")
+	flag.Var(&c.TrustedSubnet, "t", "Sets a trusted subnet for accessing server statistics")
+	flag.BoolVar(&c.EnableHTTPS.On, "e", false, "Enable HTTPS")
 	flag.Parse()
 }
 
@@ -231,6 +220,14 @@ func (c *Config) EnvConfigSet() (err error) {
 	}
 	if c.EnvConf.ServerExpand != "" {
 		err1 := c.NetAddressServerExpand.Set(c.EnvConf.ServerExpand)
+		err = errors.Join(err, err1)
+	}
+	if c.EnvConf.GRPCServerShortener != "" {
+		err1 := c.GRPCServerShortener.Set(c.EnvConf.GRPCServerShortener)
+		err = errors.Join(err, err1)
+	}
+	if c.EnvConf.GRPCServerExpand != "" {
+		err1 := c.GRPCServerExpand.Set(c.EnvConf.GRPCServerExpand)
 		err = errors.Join(err, err1)
 	}
 	if c.EnvConf.FileStoragePath != "" {
@@ -249,6 +246,76 @@ func (c *Config) EnvConfigSet() (err error) {
 		err = errors.Join(err, err1)
 	}
 	return
+}
+
+// SetConfigFromFileOrDefault заполняет параметры конфигурации не получившие значения из переменных среды или параметров запуска
+func (c *Config) SetConfigFromFileOrDefault(
+	netAddressServerShortener string,
+	netAddressServerExpand string,
+	gRPCAddressServerShortener string,
+	gRPCAddressServerExpand string,
+	fileStoragePath string,
+	dbPath string) error {
+	var err error
+
+	// Проверяем есть ли в конфигурации файл с настройками JSON, если есть то читаем из него данные
+	var jscfg JSONConfigParse
+	if c.JSONConfigFile.String() != "" {
+		var err1 error
+		jscfg, err1 = c.GetConfigFromJSONFile()
+		err = errors.Join(err, err1)
+	}
+
+	// перебираем все параметры и если есть параметры без значений заполняем
+	// их данными изначально из файла настроек, затем из настроек по умолчанию
+	if c.NetAddressServerExpand.String() == "" {
+		if jscfg.ServerExpand != "" {
+			err = errors.Join(err, c.NetAddressServerExpand.Set(jscfg.ServerExpand))
+		} else {
+			err = errors.Join(err, c.NetAddressServerExpand.Set(netAddressServerExpand))
+		}
+	}
+	if c.NetAddressServerShortener.String() == "" {
+		if jscfg.ServerShortener != "" {
+			err = errors.Join(err, c.NetAddressServerShortener.Set(jscfg.ServerShortener))
+		} else {
+			err = errors.Join(err, c.NetAddressServerShortener.Set(netAddressServerShortener))
+		}
+	}
+	if c.GRPCServerExpand.String() == "" {
+		if jscfg.GRPCServerExpand != "" {
+			err = errors.Join(err, c.GRPCServerExpand.Set(jscfg.GRPCServerExpand))
+		} else {
+			err = errors.Join(err, c.GRPCServerExpand.Set(gRPCAddressServerExpand))
+		}
+	}
+	if c.GRPCServerShortener.String() == "" {
+		if jscfg.GRPCServerShortener != "" {
+			err = errors.Join(err, c.GRPCServerShortener.Set(jscfg.GRPCServerShortener))
+		} else {
+			err = errors.Join(err, c.GRPCServerShortener.Set(gRPCAddressServerShortener))
+		}
+	}
+	if c.FileStoragePath.String() == "" {
+		if jscfg.FileStoragePath != "" {
+			err = errors.Join(err, c.FileStoragePath.Set(jscfg.FileStoragePath))
+		} else {
+			err = errors.Join(err, c.FileStoragePath.Set(fileStoragePath))
+		}
+	}
+	if c.DatabaseDSN.String() == "" {
+		if jscfg.DatabaseDSN != "" {
+			err = errors.Join(err, c.DatabaseDSN.Set(jscfg.DatabaseDSN))
+		} else {
+			err = errors.Join(err, c.DatabaseDSN.Set(dbPath))
+		}
+	}
+	if c.EnableHTTPS.String() == "" {
+		if jscfg.EnableHTTPS != "" {
+			c.EnableHTTPS.On = true
+		}
+	}
+	return err
 }
 
 // GetConfigFromJSONFile импортирует настройки из файла конфигурации
