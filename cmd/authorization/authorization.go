@@ -1,3 +1,4 @@
+// Package authorization осуществляет авторизацию пользователей
 package authorization
 
 import (

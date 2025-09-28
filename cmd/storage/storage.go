@@ -7,8 +7,9 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/h1067675/shortUrl/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/h1067675/shortUrl/internal/logger"
 )
 
 // Storage описывает структуру для хранения ссылок в переменной.
@@ -29,7 +30,7 @@ func NewStorage(database string) *Storage {
 		UsersLinks:  map[string][]int{},
 		DB:          newDB(database),
 	}
-	//r.DB.Exec("DROP TABLE links;")
+	// r.DB.Exec("DROP TABLE links;")
 	// r.DB.Exec("DROP TABLE users;")
 	// r.DB.Exec("DROP TABLE users_links;")
 	if database == "" {
@@ -201,22 +202,30 @@ func (s *Storage) DeleteUserURLS(ids struct {
 }
 
 // SaveToFile сохраняет хранилище переменной в файл.
-func (s *Storage) SaveToFile(file string) {
+func (s *Storage) SaveToFile(file string) error {
 	st := []StorageJSON{}
 	for i, e := range s.InnerLinks {
 		st = append(st, StorageJSON{i, e, s.UsersLinks[i]})
 	}
 	tf, err := json.Marshal(st)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fl, err := os.Create(file)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	defer fl.Close()
-	fl.Write(tf)
+	defer func() {
+		if cerr := fl.Close(); cerr != nil {
+			logger.Log.Debug("Error to close file", zap.String("file", file))
+		}
+	}()
+	_, err = fl.Write(tf)
+	if err != nil {
+		return err
+	}
 	logger.Log.Debug("Saved to ", zap.String("file", file))
+	return nil
 }
 
 // RestoreFromfile восстанавливает сохраненные ссылки из файла в переменную.
@@ -228,7 +237,11 @@ func (s *Storage) RestoreFromfile(file string) {
 		}
 		panic(err)
 	}
-	defer fl.Close()
+	defer func() {
+		if cerr := fl.Close(); cerr != nil {
+			logger.Log.Debug("Error to close file", zap.String("file", file))
+		}
+	}()
 	st := []StorageJSON{}
 	r := bufio.NewScanner(fl)
 	r.Scan()
@@ -246,5 +259,4 @@ func (s *Storage) RestoreFromfile(file string) {
 			s.UsersLinks[e.ShortLink] = append(s.UsersLinks[e.ShortLink], e.UserID...)
 		}
 	}
-
 }
