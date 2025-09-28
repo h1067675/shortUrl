@@ -7,9 +7,14 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/h1067675/shortUrl/cmd/authorization"
 	"github.com/h1067675/shortUrl/cmd/configsurl"
@@ -73,9 +78,77 @@ func (app *Application) New(s *storage.Storage, c *configsurl.Config, r router.R
 
 // StartServer запускает сервер.
 func (app *Application) StartServer() {
-	if err := http.ListenAndServe(app.Config.GetConfig().ServerAddress, app.Router.RouterFunc(app)); err != nil {
-		logger.Log.Fatal(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+	var err error
+
+	// Определяем сервер и указываем адрес и ручку
+	server := &http.Server{
+		Addr:    app.Config.GetConfig().ServerAddress,
+		Handler: app.Router.RouterFunc(app),
 	}
+
+	// Запускаем ожидание сигналов на завершение работы
+	idleConnsClosed := app.waitSysSignals(server)
+
+	// Определяем порядок работы сервера через HTTPS или HHTP.
+	// Если определено в настройках использование HTTPS то запускаем сервер через ListenAndServeTLS
+	if app.Config.EnableHTTPS.On {
+		// конструируем менеджер TLS-сертификатов
+		manager := &autocert.Manager{
+			// директория для хранения сертификатов
+			Cache: autocert.DirCache("cache-dir"),
+			// функция, принимающая Terms of Service издателя сертификатов
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(app.Config.GetConfig().ServerAddress),
+		}
+		server.TLSConfig = manager.TLSConfig()
+		// Запускаем сервер с HTTPS
+		err = server.ListenAndServeTLS("", "")
+	} else {
+		// Запускаем сервер через HTTP
+		err = server.ListenAndServe()
+	}
+	if err != nil {
+		logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+	}
+
+	// Ждем мягкого завершения работы сервера
+	<-idleConnsClosed
+
+	// Сохраняем хранилище из мапы в файл
+	app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
+	logger.Log.Info("Storage saved to " + app.Config.GetConfig().FileStoragePath)
+
+	// Сообщаем об окончании работы сервера
+	logger.Log.Info("Server has shutdown in graceful mode")
+}
+
+// WaitSysSignals определяет логику для отслеживания сигналов завершения работы приложения и
+// реализует процесс мягкого завершения работы приложения.
+func (app *Application) waitSysSignals(server *http.Server) chan struct{} {
+	// через этот канал сообщим основному потоку, что соединения закрыты
+	idleConnsClosed := make(chan struct{})
+	// канал для перенаправления прерываний
+	sigint := make(chan os.Signal, 1)
+	// регистрируем перенаправление прерываний
+	signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// запускаем горутину обработки пойманных прерываний
+	go func() {
+		// читаем из канала прерываний
+		<-sigint
+
+		// создаем контекст с таймаутом на завершение операций сервером
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+
+		// получили сигнал, запускаем процедуру graceful shutdown сервера
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Log.Debug(err.Error(), zap.String("server address", app.Config.GetConfig().ServerAddress))
+		}
+
+		// сообщаем основному потоку, что все сетевые соединения обработаны и закрыты
+		close(idleConnsClosed)
+	}()
+	return idleConnsClosed
 }
 
 // Authorization осуществляет авторизацию пользователя.
@@ -155,8 +228,6 @@ func (app *Application) ShortenHandler(responce http.ResponseWriter, request *ht
 				responce.WriteHeader(http.StatusConflict)
 			}
 			logger.Log.Debug("Result body", zap.String("sort URL", string(body)))
-			app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
-
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write([]byte(body))
@@ -204,7 +275,6 @@ func (app *Application) ShortenJSONHandler(responce http.ResponseWriter, request
 			if err != nil {
 				logger.Log.Error("Error json serialization", zap.String("var", fmt.Sprint(result)))
 			}
-			app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write(body)
@@ -250,7 +320,6 @@ func (app *Application) ShortenBatchJSONHandler(responce http.ResponseWriter, re
 				resulturls = append(resulturls, JsBatchResponce{ID: e.ID, SortURL: extURL})
 			}
 			body, _ = json.Marshal(resulturls)
-			app.Storage.SaveToFile(app.Config.GetConfig().FileStoragePath)
 		}
 		responce.WriteHeader(http.StatusCreated)
 		responce.Write(body)
@@ -265,7 +334,6 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 	if request.Method == http.MethodGet {
 		ctx := request.Context()
 		outURL, err := app.Storage.GetURL("http://"+app.Config.GetConfig().ServerAddress+request.URL.Path, ctx.Value(keyUserID).(int))
-		logger.Log.Debug("error from func", zap.Error(err))
 		if err == storage.ErrLinkDeleted {
 			logger.Log.Debug("URL has been deleted", zap.Error(err))
 			responce.WriteHeader(http.StatusGone)
@@ -274,6 +342,7 @@ func (app *Application) ExpandHandler(responce http.ResponseWriter, request *htt
 			logger.Log.Debug("Can't to get URL", zap.Error(err))
 			responce.WriteHeader(http.StatusBadRequest)
 		}
+		logger.Log.Debug("URL expanded " + outURL)
 		responce.Header().Add("Location", outURL)
 		responce.WriteHeader(http.StatusTemporaryRedirect)
 		return
