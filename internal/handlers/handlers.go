@@ -148,6 +148,7 @@ func (app *Application) Authorization(next http.Handler) http.Handler {
 func (app *Application) CheckDBHandler(responce http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet && app.Storage.PingDB() {
 		responce.WriteHeader(http.StatusOK)
+		return
 	}
 	responce.WriteHeader(http.StatusInternalServerError)
 }
