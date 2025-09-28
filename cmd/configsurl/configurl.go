@@ -215,7 +215,7 @@ func (c *Config) ParseFlags() {
 	flag.Var(&c.DatabaseDSN, "d", "Database path")
 	flag.Var(&c.JSONConfigFile, "config", "Sets the path to the configuration file in JSON format")
 	flag.Var(&c.JSONConfigFile, "c", "reduction to -config flag")
-	flag.BoolVar(&c.EnableHTTPS.On, "e", false, "Enable HTTPS")
+	flag.BoolVar(&c.EnableHTTPS.On, "t", false, "Enable HTTPS")
 	flag.Parse()
 }
 

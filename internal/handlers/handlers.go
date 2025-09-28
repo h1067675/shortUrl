@@ -24,7 +24,7 @@ const (
 	keyNewUser
 )
 
-// структуры
+// структуры 24
 type (
 	// key необходим для передачи через context
 	key int
